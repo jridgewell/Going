@@ -20,7 +20,44 @@ Or install it yourself as:
 
 ## Usage
 
-TODO: Write usage instructions here
+Brings Go's Channel and Goroutines to Ruby.
+
+```ruby
+require 'going'
+# Require 'going/kernel' to get the unnamespaced `go` function
+# require 'going/kernel'
+
+class ConcurrentSieve
+  def generator
+    ch = Going::Channel.new
+    Going.go do
+      i = 1
+      loop { ch.push(i += 1) }
+    end
+    ch
+  end
+
+  def filter(prime, from)
+    ch = Going::Channel.new
+    Going.go do
+      loop do
+        i = from.receive
+        ch.push(i) if i % prime != 0
+      end
+    end
+    ch
+  end
+
+  def initialize(n)
+    ch = generator
+    n.times do
+      prime = ch.receive
+      puts prime
+      ch = filter(prime, ch)
+    end
+  end
+end
+```
 
 ## Contributing
 
