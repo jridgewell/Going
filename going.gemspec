@@ -7,8 +7,7 @@ Gem::Specification.new do |spec|
   spec.version       = Going::VERSION
   spec.authors       = ["Justin Ridgewell"]
   spec.email         = ["justin@ridgewell.name"]
-  spec.summary       = %q{TODO: Write a short summary. Required.}
-  spec.description   = %q{TODO: Write a longer description. Optional.}
+  spec.summary       = %q{Go for Ruby}
   spec.homepage      = "https://github.com/jridgewell/going"
   spec.license       = "MIT"
 
