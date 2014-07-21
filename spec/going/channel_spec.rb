@@ -39,10 +39,39 @@ describe Going::Channel do
       channel.close
       expect(channel.close).to be(false)
     end
+
+    it 'will wake a blocked push' do
+      Going.go do
+        sleep 0.1
+        channel.close
+      end
+      expect { channel.push 1 }.to throw_symbol(:close)
+    end
+
+    it 'will wake a blocked push' do
+      Going.go do
+        sleep 0.1
+        channel.close
+      end
+      expect { channel.receive }.to throw_symbol(:close)
+    end
+
+    it 'will reject all but the first #capacity pushes' do
+      channel = Going::Channel.new 2
+      Going.go do
+        sleep 0.1
+        channel.close
+      end
+      catch :close do
+        3.times { |i| channel.push i }
+      end
+      expect(channel.size).to eq(2)
+    end
   end
 
   describe '#push' do
     subject(:channel) { Going::Channel.new 1 }
+
     it 'is aliased as #<<' do
       expect(channel.method(:<<)).to eq(channel.method(:push))
     end
@@ -116,6 +145,18 @@ describe Going::Channel do
       now = Time.now
       channel.receive
       expect(elapsed_time(now)).to be > 0.2
+    end
+
+    it 'returns nil if closed' do
+      channel.close
+      expect(channel.receive).to be_nil
+    end
+
+    it 'does not block if closed' do
+      channel.close
+      now = Time.now
+      channel.receive
+      expect(elapsed_time(now)).to be < 1
     end
   end
 
