@@ -19,6 +19,8 @@ module Going
       @mutex = Mutex.new
       @push_semaphore = ConditionVariable.new
       @pop_semaphore = ConditionVariable.new
+
+      yield self if block_given?
     end
 
     #
@@ -60,6 +62,7 @@ module Going
     # Alias of push
     #
     alias_method :<<, :push
+    alias_method :yield, :push
 
     #
     # Receives data from the channel. If the channel is already empty,
@@ -77,6 +80,7 @@ module Going
     # Alias of pop
     #
     alias_method :receive, :pop
+    alias_method :next, :pop
 
     #
     # Delegate size, length, and empty? to the messages queue
