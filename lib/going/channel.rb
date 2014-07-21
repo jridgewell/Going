@@ -88,6 +88,13 @@ module Going
     #
     alias_method :length, :size
 
+    def inspect
+      inspection = [:capacity, :messages].map do |attr|
+        "#{attr}: #{send(attr).inspect}"
+      end
+      "#<#{self.class} #{inspection.join(', ')}>"
+    end
+
     private
 
     def_delegators :@mutex, :synchronize
