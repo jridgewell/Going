@@ -38,7 +38,10 @@ module Going
     #
     def close
       synchronize do
-        closed? ? false : @closed = true
+        return false if closed?
+        @messages = messages.first(capacity)
+        broadcast_close
+        @closed = true
       end
     end
 
@@ -52,6 +55,7 @@ module Going
         messages.push obj
         signal_push
         wait_for_pop if messages.length > capacity
+        check_for_close
         self
       end
     end
@@ -67,8 +71,10 @@ module Going
     #
     def pop
       synchronize do
+        return if closed?
         wait_for_push if messages.empty?
         signal_pop
+        check_for_close
         messages.shift
       end
     end
@@ -117,6 +123,15 @@ module Going
 
     def wait_for_push
       @pop_semaphore.wait(@mutex)
+    end
+
+    def broadcast_close
+      @push_semaphore.broadcast
+      @pop_semaphore.broadcast
+    end
+
+    def check_for_close
+      throw :close if closed?
     end
   end
 end
