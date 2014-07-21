@@ -1,7 +1,7 @@
 describe Going::Channel do
   subject(:channel) { Going::Channel.new }
   def elapsed_time(original_time)
-    (Time.now - original_time) * 1000
+    (Time.now - original_time)
   end
 
   describe '.new' do
