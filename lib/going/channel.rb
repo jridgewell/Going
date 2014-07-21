@@ -2,16 +2,15 @@ require 'going'
 
 module Going
   #
-  # This class represents queues of specified size capacity.  The push operation
-  # may be blocked if the capacity is full.
-  #
-  # See Queue for an example of how a SizedQueue works.
+  # This class represents message channels of specified capacity.
+  # The push operation may be blocked if the capacity is full.
+  # The pop operation may be blocked if no messages have been sent.
   #
   class Channel
     extend Forwardable
 
     #
-    # Creates a fixed-length queue with a capacity of +capacity+.
+    # Creates a fixed-length channel with a capacity of +capacity+.
     #
     def initialize(capacity = 0)
       fail ArgumentError, 'channel capacity must be 0 or greater' unless capacity >= 0
@@ -23,7 +22,7 @@ module Going
     end
 
     #
-    # Returns the capacity of the queue.
+    # Returns the capacity of the channel.
     #
     attr_reader :capacity
 
@@ -50,9 +49,9 @@ module Going
     def push(obj)
       synchronize do
         fail 'cannot push to a closed channel' if closed?
-        queue.push obj
+        messages.push obj
         signal_push
-        wait_for_pop if queue.length > capacity
+        wait_for_pop if messages.length > capacity
         self
       end
     end
@@ -68,9 +67,9 @@ module Going
     #
     def pop
       synchronize do
-        wait_for_push if queue.empty?
+        wait_for_push if messages.empty?
         signal_pop
-        queue.shift
+        messages.shift
       end
     end
 
@@ -80,9 +79,9 @@ module Going
     alias_method :receive, :pop
 
     #
-    # Delegate size, length, and empty? to the queue
+    # Delegate size, length, and empty? to the messages queue
     #
-    def_delegators :queue, :size, :empty?
+    def_delegators :messages, :size, :empty?
 
     #
     # Alias of size
@@ -93,8 +92,8 @@ module Going
 
     def_delegators :@mutex, :synchronize
 
-    def queue
-      @queue ||= []
+    def messages
+      @messages ||= []
     end
 
     def signal_pop
