@@ -84,7 +84,7 @@ describe Going::Channel do
     it 'will not block if channel is under capacity' do
       now = Time.now
       channel.push 1
-      expect(elapsed_time(now)).to be < 1
+      expect(elapsed_time(now)).to be < 0.2
     end
 
     it 'will block if channel is over capacity' do
@@ -134,7 +134,7 @@ describe Going::Channel do
       channel.push 1
       now = Time.now
       channel.receive
-      expect(elapsed_time(now)).to be < 1
+      expect(elapsed_time(now)).to be < 0.2
     end
 
     it 'will block if channel is empty' do
@@ -156,7 +156,7 @@ describe Going::Channel do
       channel.close
       now = Time.now
       channel.receive
-      expect(elapsed_time(now)).to be < 1
+      expect(elapsed_time(now)).to be < 0.2
     end
   end
 
