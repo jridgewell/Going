@@ -5,10 +5,10 @@ describe Going do
       Going.go
     end
 
-    it 'passes args to thread' do
-      args = [1, 2, 3]
-      expect(Thread).to receive(:new).with(*args)
-      Going.go(*args)
+    it 'passes args to block' do
+      args = nil
+      Going.go(1, 2, 3) { |*a| args = a }.join
+      expect(args).to eq([1, 2, 3])
     end
 
     it 'passes block to thread' do

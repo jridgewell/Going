@@ -1,6 +1,6 @@
-# Going
+# Going [![Build Status](https://travis-ci.org/jridgewell/Going.svg)](https://travis-ci.org/jridgewell/Going)
 
-TODO: Write a gem description
+Go for Ruby
 
 ## Installation
 
