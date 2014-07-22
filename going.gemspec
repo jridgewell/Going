@@ -3,7 +3,7 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require 'going/version'
 
 Gem::Specification.new do |spec|
-  spec.name          = "Going"
+  spec.name          = "going"
   spec.version       = Going::VERSION
   spec.authors       = ["Justin Ridgewell"]
   spec.email         = ["justin@ridgewell.name"]
