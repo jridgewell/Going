@@ -16,6 +16,12 @@ describe Going::Channel do
     it 'is not closed' do
       expect(channel).not_to be_closed
     end
+
+    it 'yields itself if block given' do
+      yielded = nil
+      channel = Going::Channel.new { |y| yielded = y }
+      expect(yielded).to be(channel)
+    end
   end
 
   describe '#capacity' do
@@ -76,6 +82,10 @@ describe Going::Channel do
       expect(channel.method(:<<)).to eq(channel.method(:push))
     end
 
+    it 'is aliased as #yield' do
+      expect(channel.method(:yield)).to eq(channel.method(:push))
+    end
+
     it 'raises error if channel is closed' do
       channel.close
       expect { channel.push 1 }.to raise_error
@@ -123,6 +133,10 @@ describe Going::Channel do
 
     it 'is aliased as #receive' do
       expect(channel.method(:receive)).to eq(channel.method(:pop))
+    end
+
+    it 'is aliased as #next' do
+      expect(channel.method(:next)).to eq(channel.method(:pop))
     end
 
     it 'returns the next message' do
