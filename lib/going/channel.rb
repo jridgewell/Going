@@ -13,7 +13,7 @@ module Going
     # Creates a fixed-length channel with a capacity of +capacity+.
     #
     def initialize(capacity = 0)
-      fail ArgumentError, 'channel capacity must be 0 or greater' unless capacity >= 0
+      fail ArgumentError, 'channel capacity must be 0 or greater' if capacity < 0
       @capacity = capacity
       @closed = false
       @mutex = Mutex.new
@@ -57,7 +57,7 @@ module Going
         messages.push obj
         signal_push
         wait_for_pop if messages.length > capacity
-        check_for_close
+        throw :close if closed?
         self
       end
     end
@@ -77,7 +77,7 @@ module Going
         return if closed?
         wait_for_push if messages.empty?
         signal_pop
-        check_for_close
+        throw :close if closed?
         messages.shift
       end
     end
@@ -132,10 +132,6 @@ module Going
     def broadcast_close
       @push_semaphore.broadcast
       @pop_semaphore.broadcast
-    end
-
-    def check_for_close
-      throw :close if closed?
     end
   end
 end
