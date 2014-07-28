@@ -7,8 +7,6 @@ module Going
   # The pop operation may be blocked if no messages have been sent.
   #
   class Channel
-    extend Forwardable
-
     #
     # Creates a fixed-length channel with a capacity of +capacity+.
     #
@@ -56,7 +54,7 @@ module Going
         fail 'cannot push to a closed channel' if closed?
         messages.push obj
         signal_push
-        wait_for_pop if messages.length > capacity
+        wait_for_pop if size > capacity
         throw :close if closed?
         self
       end
@@ -75,7 +73,7 @@ module Going
     def pop
       synchronize do
         return if closed?
-        wait_for_push if messages.empty?
+        wait_for_push if empty?
         signal_pop
         throw :close if closed?
         messages.shift
@@ -89,14 +87,23 @@ module Going
     alias_method :next, :pop
 
     #
-    # Delegate size, length, and empty? to the messages queue
+    # Returns the number of messages in the channel
     #
-    def_delegators :messages, :size, :empty?
-
+    def size
+      messages.size
+    end
+    
     #
     # Alias of size
     #
     alias_method :length, :size
+
+    #
+    # Returns whether the channel is empty.
+    #
+    def empty?
+      messages.empty?
+    end
 
     def inspect
       inspection = [:capacity, :messages].map do |attr|
@@ -107,7 +114,9 @@ module Going
 
     private
 
-    def_delegators :@mutex, :synchronize
+    def synchronize(&blk)
+      @mutex.synchronize(&blk)
+    end
 
     def messages
       @messages ||= []
