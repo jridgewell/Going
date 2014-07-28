@@ -7,8 +7,6 @@ module Going
   # The pop operation may be blocked if no messages have been sent.
   #
   class Channel
-    extend Forwardable
-
     #
     # Creates a fixed-length channel with a capacity of +capacity+.
     #
@@ -89,14 +87,23 @@ module Going
     alias_method :next, :pop
 
     #
-    # Delegate size, length, and empty? to the messages queue
+    # Returns the number of messages in the channel
     #
-    def_delegators :messages, :size, :empty?
-
+    def size
+      messages.size
+    end
+    
     #
     # Alias of size
     #
     alias_method :length, :size
+
+    #
+    # Returns whether the channel is empty.
+    #
+    def empty?
+      messages.empty?
+    end
 
     def inspect
       inspection = [:capacity, :messages].map do |attr|
@@ -107,7 +114,9 @@ module Going
 
     private
 
-    def_delegators :@mutex, :synchronize
+    def synchronize(&blk)
+      @mutex.synchronize(&blk)
+    end
 
     def messages
       @messages ||= []
