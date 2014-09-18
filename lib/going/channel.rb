@@ -55,12 +55,10 @@ module Going
         fail 'cannot push to a closed channel' if closed?
         push = Push.new(obj)
 
-        handle_push push
-
+        pair_with_pop(push) or pushes << push
         push.wait(mutex) if size > capacity
 
         check_for_close
-
         self
       end
     end
@@ -80,12 +78,10 @@ module Going
         return if closed?
         pop = Pop.new
 
-        handle_pop pop
-
+        pair_with_push(pop) or pops << pop
         pop.wait(mutex) if empty?
 
         check_for_close
-
         pop.message
       end
     end
@@ -130,21 +126,17 @@ module Going
       mutex.synchronize(&blk)
     end
 
-    def handle_pop(pop)
-      if push = pushes.shift
-        signal_channel_now_under_capacity
-        pop.message = push.message
-      else
-        pops << pop
-      end
+    def pair_with_push(pop)
+      return unless push = pushes.shift
+      signal_channel_now_under_capacity
+      pop.message = push.message
+      true
     end
 
-    def handle_push(push)
-      if pop = pops.shift
-        pop.message = push.message
-      else
-        pushes << push
-      end
+    def pair_with_pop(push)
+      return unless pop = pops.shift
+      pop.message = push.message
+      true
     end
 
     def signal_channel_now_under_capacity
