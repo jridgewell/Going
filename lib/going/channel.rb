@@ -128,14 +128,16 @@ module Going
 
     def pair_with_push(pop)
       return unless push = pushes.shift
-      signal_channel_now_under_capacity
       pop.message = push.message
+      push.signal
+      signal_channel_now_under_capacity
       true
     end
 
     def pair_with_pop(push)
       return unless pop = pops.shift
       pop.message = push.message
+      pop.signal
       true
     end
 
