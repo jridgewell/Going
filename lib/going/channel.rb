@@ -1,5 +1,3 @@
-require 'going'
-
 module Going
   #
   # This class represents message channels of specified capacity.
@@ -7,16 +5,20 @@ module Going
   # The pop operation may be blocked if no messages have been sent.
   #
   class Channel
+    extend BooleanAttrReader
+
     #
     # Creates a fixed-length channel with a capacity of +capacity+.
     #
     def initialize(capacity = 0)
       fail ArgumentError, 'channel capacity must be 0 or greater' if capacity < 0
       @capacity = capacity
+
+      @pushes = []
+      @pops = []
+
       @closed = false
       @mutex = Mutex.new
-      @push_semaphore = ConditionVariable.new
-      @pop_semaphore = ConditionVariable.new
 
       yield self if block_given?
     end
@@ -29,9 +31,7 @@ module Going
     #
     # Returns whether or not the channel is closed.
     #
-    def closed?
-      @closed
-    end
+    battr_reader :closed
 
     #
     # Closes the channel. Any data in the buffer may still be retrieved.
@@ -39,8 +39,9 @@ module Going
     def close
       synchronize do
         return false if closed?
-        @messages = messages.first(capacity)
-        broadcast_close
+
+        pops.each(&:signal).clear
+        pushes.pop.signal while size > capacity
         @closed = true
       end
     end
@@ -52,10 +53,14 @@ module Going
     def push(obj)
       synchronize do
         fail 'cannot push to a closed channel' if closed?
-        messages.push obj
-        signal_push
-        wait_for_pop if size > capacity
-        throw :close if closed?
+        push = Push.new(obj)
+
+        handle_push push
+
+        push.wait(mutex) if size > capacity
+
+        check_for_close
+
         self
       end
     end
@@ -73,10 +78,15 @@ module Going
     def pop
       synchronize do
         return if closed?
-        wait_for_push if empty?
-        signal_pop
-        throw :close if closed?
-        messages.shift
+        pop = Pop.new
+
+        handle_pop pop
+
+        pop.wait(mutex) if empty?
+
+        check_for_close
+
+        pop.message
       end
     end
 
@@ -90,9 +100,9 @@ module Going
     # Returns the number of messages in the channel
     #
     def size
-      messages.size
+      pushes.size
     end
-    
+
     #
     # Alias of size
     #
@@ -102,11 +112,11 @@ module Going
     # Returns whether the channel is empty.
     #
     def empty?
-      messages.empty?
+      pushes.empty?
     end
 
     def inspect
-      inspection = [:capacity, :messages].map do |attr|
+      inspection = [:capacity, :size].map do |attr|
         "#{attr}: #{send(attr).inspect}"
       end
       "#<#{self.class} #{inspection.join(', ')}>"
@@ -114,33 +124,37 @@ module Going
 
     private
 
+    attr_reader :mutex, :pushes, :pops
+
     def synchronize(&blk)
-      @mutex.synchronize(&blk)
+      mutex.synchronize(&blk)
     end
 
-    def messages
-      @messages ||= []
+    def handle_pop(pop)
+      if push = pushes.shift
+        signal_channel_now_under_capacity
+        pop.message = push.message
+      else
+        pops << pop
+      end
     end
 
-    def signal_pop
-      @push_semaphore.signal
+    def handle_push(push)
+      if pop = pops.shift
+        pop.message = push.message
+      else
+        pushes << push
+      end
     end
 
-    def wait_for_pop
-      @push_semaphore.wait(@mutex)
+    def signal_channel_now_under_capacity
+      if capacity.nonzero? && push = pushes[capacity - 1]
+        push.signal
+      end
     end
 
-    def signal_push
-      @pop_semaphore.signal
-    end
-
-    def wait_for_push
-      @pop_semaphore.wait(@mutex)
-    end
-
-    def broadcast_close
-      @push_semaphore.broadcast
-      @pop_semaphore.broadcast
+    def check_for_close
+      throw :close if closed?
     end
   end
 end

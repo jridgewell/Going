@@ -1,3 +1,5 @@
+require 'going'
+
 describe Going::Channel do
   subject(:channel) { Going::Channel.new }
   def elapsed_time(original_time)
@@ -54,7 +56,7 @@ describe Going::Channel do
       expect { channel.push 1 }.to throw_symbol(:close)
     end
 
-    it 'will wake a blocked push' do
+    it 'will wake a blocked pop' do
       Going.go do
         sleep 0.1
         channel.close
