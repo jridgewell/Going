@@ -41,7 +41,7 @@ module Going
         return false if closed?
 
         pops.each(&:signal).clear
-        pushes.pop.signal while size > capacity
+        pushes.pop.signal while pushes.size > capacity
         @closed = true
       end
     end
@@ -56,9 +56,9 @@ module Going
         push = Push.new(obj)
 
         pair_with_pop(push) or pushes << push
-        push.wait(mutex) if size > capacity
+        push.wait(mutex) if pushes.size > capacity
 
-        check_for_close
+        fail 'cannot push to a closed channel' if closed?
         self
       end
     end
@@ -75,13 +75,13 @@ module Going
     #
     def pop
       synchronize do
-        return if closed?
+        throw :close if closed?
         pop = Pop.new
 
         pair_with_push(pop) or pops << pop
         pop.wait(mutex) if empty?
 
-        check_for_close
+        throw :close if closed?
         pop.message
       end
     end
@@ -96,7 +96,7 @@ module Going
     # Returns the number of messages in the channel
     #
     def size
-      pushes.size
+      [capacity, pushes.size].min
     end
 
     #
@@ -108,7 +108,7 @@ module Going
     # Returns whether the channel is empty.
     #
     def empty?
-      pushes.empty?
+      size == 0
     end
 
     def inspect
@@ -129,6 +129,7 @@ module Going
     def pair_with_push(pop)
       return unless push = pushes.shift
       pop.message = push.message
+      pop.signal
       push.signal
       signal_channel_now_under_capacity
       true
@@ -137,6 +138,7 @@ module Going
     def pair_with_pop(push)
       return unless pop = pops.shift
       pop.message = push.message
+      push.signal
       pop.signal
       true
     end
@@ -145,10 +147,6 @@ module Going
       if capacity.nonzero? && push = pushes[capacity - 1]
         push.signal
       end
-    end
-
-    def check_for_close
-      throw :close if closed?
     end
   end
 end
