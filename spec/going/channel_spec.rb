@@ -8,23 +8,20 @@ describe Going::Channel do
   after(:all) do
     Thread.abort_on_exception = @abort_on_exception
   end
-  before(:all) do
-    @private_methods = [:pushes, :pops]
-    @private_methods.each do |private_method|
-      Going::Channel.class_eval { public private_method }
-    end
-  end
-  after(:all) do
-    @private_methods.each do |private_method|
-      Going::Channel.class_eval { private private_method }
-    end
-  end
 
   subject(:channel) { Going::Channel.new }
   let(:buffered_channel) { Going::Channel.new 1 }
 
   def elapsed_time(original_time)
     (Time.now - original_time)
+  end
+
+  def sleeper(channel, queue, size)
+    fail "channel does not respond to #{queue}" unless channel.respond_to? queue, true
+    begin
+      Thread.pass
+      sleep 0.1
+    end until channel.send(queue).size == size
   end
 
   describe '.new' do
@@ -71,7 +68,7 @@ describe Going::Channel do
 
     it 'will wake a blocked push' do
       Going.go do
-        sleep 0.1 until channel.pushes.size > 0
+        sleeper channel, :pushes, 1
         channel.close
       end
       expect { channel.push 1 }.to raise_error
@@ -79,7 +76,7 @@ describe Going::Channel do
 
     it 'will wake a blocked pop' do
       Going.go do
-        sleep 0.1 until channel.pops.size > 0
+        sleeper channel, :pops, 1
         channel.close
       end
       expect { channel.receive }.to throw_symbol(:close)
@@ -89,7 +86,7 @@ describe Going::Channel do
       begin
         channel = Going::Channel.new 2
         Going.go do
-          sleep 0.1 until channel.pushes.size > 2
+          sleeper channel, :pushes, 3
           channel.close
         end
         3.times { |i| channel.push i }
@@ -121,7 +118,7 @@ describe Going::Channel do
 
     it 'will block if channel is over capacity' do
       Going.go do
-        sleep 0.1 until channel.pushes.size > 0
+        sleeper channel, :pushes, 1
         sleep 0.25
         channel.receive
       end
@@ -133,14 +130,15 @@ describe Going::Channel do
     it 'will push messages in order' do
       buffered_channel.push 1
       Going.go do
-        sleep 0.1 until buffered_channel.pushes.size > 0
+        sleeper buffered_channel, :pushes, 1
         buffered_channel.push 2
       end
       Going.go do
-        sleep 0.1 until buffered_channel.pushes.size > 1
+        sleeper buffered_channel, :pushes, 2
         buffered_channel.push 3
       end
-      sleep 0.1 until buffered_channel.pushes.size > 2
+
+      sleeper buffered_channel, :pushes, 3
       1.upto(3).each do |i|
         expect(buffered_channel.receive).to eq(i)
       end
@@ -174,7 +172,7 @@ describe Going::Channel do
 
     it 'will block if channel is empty' do
       Going.go do
-        sleep 0.1 until channel.pops.size > 0
+        sleeper channel, :pops, 1
         sleep 0.25
         channel.push 1
       end
@@ -211,7 +209,7 @@ describe Going::Channel do
       Going.go do
         channel.push 1
       end
-      sleep 0.1 until channel.pushes.size > 0
+      sleeper channel, :pushes, 1
       expect(channel.size).to eq(0)
     end
   end
@@ -226,7 +224,7 @@ describe Going::Channel do
         Going.go do
           channel.push 1
         end
-        sleep 0.1 until channel.pushes.size > 0
+        sleeper channel, :pushes, 1
         expect(channel).to be_empty
       end
     end
