@@ -6,7 +6,6 @@ module Going
 
     def initialize(message = nil)
       @message = message
-      @completed = false
       @signaled = false
       @semaphore = ConditionVariable.new
     end
@@ -23,11 +22,11 @@ module Going
     private
 
     def wake?
-      completed? || signaled?
+      signaled?
     end
 
     attr_reader :semaphore
-    battr_reader :signaled, :completed
+    battr_reader :signaled
 
   end
 end
