@@ -53,7 +53,7 @@ describe Going::Channel do
         sleep 0.1
         channel.close
       end
-      expect { channel.push 1 }.to throw_symbol(:close)
+      expect { channel.push 1 }.to raise_error
     end
 
     it 'will wake a blocked pop' do
@@ -65,15 +65,16 @@ describe Going::Channel do
     end
 
     it 'will reject all but the first #capacity pushes' do
-      channel = Going::Channel.new 2
-      Going.go do
-        sleep 0.1
-        channel.close
-      end
-      catch :close do
+      begin
+        channel = Going::Channel.new 2
+        Going.go do
+          sleep 0.1
+          channel.close
+        end
         3.times { |i| channel.push i }
+      rescue
+        expect(channel.size).to eq(2)
       end
-      expect(channel.size).to eq(2)
     end
   end
 
@@ -163,16 +164,9 @@ describe Going::Channel do
       expect(elapsed_time(now)).to be > 0.2
     end
 
-    it 'returns nil if closed' do
+    it 'throws :close if channel is closed' do
       channel.close
-      expect(channel.receive).to be_nil
-    end
-
-    it 'does not block if closed' do
-      channel.close
-      now = Time.now
-      channel.receive
-      expect(elapsed_time(now)).to be < 0.2
+      expect { channel.receive }.to throw_symbol(:close)
     end
   end
 
@@ -191,6 +185,16 @@ describe Going::Channel do
       channel.receive
       expect(channel.size).to eq(1)
       channel.receive
+      expect(channel.size).to eq(0)
+    end
+
+    it 'returns 0 for unbuffered channel' do
+      run = false
+      Going.go do
+        run = true
+        channel.push 1
+      end
+      sleep 0.1 until run
       expect(channel.size).to eq(0)
     end
   end
