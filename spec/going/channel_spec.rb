@@ -210,8 +210,18 @@ describe Going::Channel do
   end
 
   describe '#empty?' do
-    it 'returns true when no messages in channel' do
-      expect(channel).to be_empty
+    context 'when capacity is 0' do
+      it 'returns true when no messages in channel' do
+        expect(channel).to be_empty
+      end
+
+      it 'returns true even if blocked pushes' do
+        Going.go do
+          channel.push 1
+        end
+        sleep 0.1 until channel.pushes.size > 0
+        expect(channel).to be_empty
+      end
     end
 
     context 'when capacity is greater than 0' do
