@@ -1,7 +1,21 @@
 require 'going'
 
 describe Going::Channel do
+  before(:all) do
+    @private_methods = [:pushes, :pops]
+    @private_methods.each do |private_method|
+      Going::Channel.class_eval { public private_method }
+    end
+  end
+  after(:all) do
+    @private_methods.each do |private_method|
+      Going::Channel.class_eval { private private_method }
+    end
+  end
+
   subject(:channel) { Going::Channel.new }
+  let(:buffered_channel) { Going::Channel.new 1 }
+
   def elapsed_time(original_time)
     (Time.now - original_time)
   end
@@ -50,7 +64,7 @@ describe Going::Channel do
 
     it 'will wake a blocked push' do
       Going.go do
-        sleep 0.1
+        sleep 0.1 until channel.pushes.size > 0
         channel.close
       end
       expect { channel.push 1 }.to raise_error
@@ -58,7 +72,7 @@ describe Going::Channel do
 
     it 'will wake a blocked pop' do
       Going.go do
-        sleep 0.1
+        sleep 0.1 until channel.pops.size > 0
         channel.close
       end
       expect { channel.receive }.to throw_symbol(:close)
@@ -68,7 +82,7 @@ describe Going::Channel do
       begin
         channel = Going::Channel.new 2
         Going.go do
-          sleep 0.1
+          sleep 0.1 until channel.pushes.size > 2
           channel.close
         end
         3.times { |i| channel.push i }
@@ -79,8 +93,6 @@ describe Going::Channel do
   end
 
   describe '#push' do
-    subject(:channel) { Going::Channel.new 1 }
-
     it 'is aliased as #<<' do
       expect(channel.method(:<<)).to eq(channel.method(:push))
     end
@@ -96,13 +108,13 @@ describe Going::Channel do
 
     it 'will not block if channel is under capacity' do
       now = Time.now
-      channel.push 1
+      buffered_channel.push 1
       expect(elapsed_time(now)).to be < 0.2
     end
 
     it 'will block if channel is over capacity' do
-      channel.push 1
       Going.go do
+        sleep 0.1 until channel.pushes.size > 0
         sleep 0.25
         channel.receive
       end
@@ -112,28 +124,27 @@ describe Going::Channel do
     end
 
     it 'will push messages in order' do
-      channel.push 1
+      buffered_channel.push 1
       Going.go do
-        channel.push 2
+        sleep 0.1 until buffered_channel.pushes.size > 0
+        buffered_channel.push 2
       end
       Going.go do
-        sleep 0.05
-        channel.push 3
+        sleep 0.1 until buffered_channel.pushes.size > 1
+        buffered_channel.push 3
       end
-      sleep 0.1
+      sleep 0.1 until buffered_channel.pushes.size > 2
       1.upto(3).each do |i|
-        expect(channel.receive).to eq(i)
+        expect(buffered_channel.receive).to eq(i)
       end
     end
 
     it 'returns the channel' do
-      expect(channel.push(1)).to be(channel)
+      expect(buffered_channel.push(1)).to be(buffered_channel)
     end
   end
 
   describe '#pop' do
-    subject(:channel) { Going::Channel.new 1 }
-
     it 'is aliased as #receive' do
       expect(channel.method(:receive)).to eq(channel.method(:pop))
     end
@@ -143,19 +154,20 @@ describe Going::Channel do
     end
 
     it 'returns the next message' do
-      channel.push 1
-      expect(channel.receive).to eq(1)
+      buffered_channel.push 1
+      expect(buffered_channel.receive).to eq(1)
     end
 
     it 'will not block if channel is not empty' do
-      channel.push 1
+      buffered_channel.push 1
       now = Time.now
-      channel.receive
+      buffered_channel.receive
       expect(elapsed_time(now)).to be < 0.2
     end
 
     it 'will block if channel is empty' do
       Going.go do
+        sleep 0.1 until channel.pops.size > 0
         sleep 0.25
         channel.push 1
       end
@@ -189,12 +201,10 @@ describe Going::Channel do
     end
 
     it 'returns 0 for unbuffered channel' do
-      run = false
       Going.go do
-        run = true
         channel.push 1
       end
-      sleep 0.1 until run
+      sleep 0.1 until channel.pushes.size > 0
       expect(channel.size).to eq(0)
     end
   end
@@ -205,15 +215,13 @@ describe Going::Channel do
     end
 
     context 'when capacity is greater than 0' do
-      subject(:channel) { Going::Channel.new 1 }
-
-      it 'returns true when messages in channel' do
-        expect(channel).to be_empty
+      it 'returns true when no messages in channel' do
+        expect(buffered_channel).to be_empty
       end
 
       it 'returns false when messages in channel' do
-        channel.push 1
-        expect(channel).not_to be_empty
+        buffered_channel.push 1
+        expect(buffered_channel).not_to be_empty
       end
     end
   end
