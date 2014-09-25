@@ -2,6 +2,13 @@ require 'going'
 
 describe Going::Channel do
   before(:all) do
+    @abort_on_exception = Thread.abort_on_exception
+    Thread.abort_on_exception = true
+  end
+  after(:all) do
+    Thread.abort_on_exception = @abort_on_exception
+  end
+  before(:all) do
     @private_methods = [:pushes, :pops]
     @private_methods.each do |private_method|
       Going::Channel.class_eval { public private_method }
