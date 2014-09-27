@@ -40,8 +40,8 @@ module Going
       synchronize do
         return false if closed?
 
-        pops.each(&:signal).clear
-        pushes.pop.signal while pushes.size > capacity
+        pops.each(&:close).clear
+        pushes_over_capacity!.each(&:close)
         @closed = true
       end
     end
@@ -50,15 +50,27 @@ module Going
     # Pushes +obj+ to the channel. If the channel is already full, waits
     # until a thread pops from it.
     #
-    def push(obj)
+    def push(obj, &on_complete)
       synchronize do
-        fail 'cannot push to a closed channel' if closed?
-        push = Push.new(obj)
+        push = Push.new(obj, select_statement: select_statement, &on_complete)
+        pushes << push
 
-        pair_with_pop(push) or pushes << push
-        push.wait(mutex) if pushes.size > capacity
+        if pop_index = pops.index { |x| select_statement != x.select_statement }
+          if select_statement?
+            select_statement.once(push, pop_index, &method(:pair_with_pop))
+            select_statement.register(push, pushes)
+          else
+            pair_with_pop(push, pop_index)
+          end
+        end
 
-        fail 'cannot push to a closed channel' if closed?
+        push.complete if under_capacity?
+        push.signal if closed? || select_statement?
+        push.close if closed?
+
+        push.wait(mutex)
+
+        fail 'cannot push to a closed channel' if closed? && !select_statement?
         self
       end
     end
@@ -73,15 +85,25 @@ module Going
     # Receives data from the channel. If the channel is already empty,
     # waits until a thread pushes to it.
     #
-    def pop
+    def pop(&on_complete)
       synchronize do
-        throw :close if closed?
-        pop = Pop.new
+        pop = Pop.new(select_statement: select_statement, &on_complete)
+        pops << pop
 
-        pair_with_push(pop) or pops << pop
-        pop.wait(mutex) if empty?
+        if push_index = pushes.index { |x| select_statement != x.select_statement }
+          if select_statement?
+            select_statement.once(pop, push_index, &method(:pair_with_push))
+            select_statement.register(pop, pops)
+          else
+            pair_with_push(pop, push_index)
+          end
+        end
 
-        throw :close if closed?
+        pop.signal if pushes.any? || closed? || select_statement?
+        pop.close if closed?
+        pop.wait(mutex)
+
+        throw :close if closed? && pop.incomplete? && !select_statement?
         pop.message
       end
     end
@@ -126,27 +148,47 @@ module Going
       mutex.synchronize(&blk)
     end
 
-    def pair_with_push(pop)
-      return unless push = pushes.shift
+    def pair_with_push(pop, push_index)
+      push = pushes[push_index]
       pop.message = push.message
-      pop.signal
-      push.signal
+      push.complete
+      pop.complete
       signal_channel_now_under_capacity
-      true
+
+      pops.pop
+      pushes.delete_at push_index
     end
 
-    def pair_with_pop(push)
-      return unless pop = pops.shift
+    def pair_with_pop(push, pop_index)
+      pop = pops[pop_index]
       pop.message = push.message
-      push.signal
-      pop.signal
-      true
+      push.complete
+      pop.complete
+
+      pushes.pop
+      pops.delete_at pop_index
     end
 
     def signal_channel_now_under_capacity
-      if capacity.nonzero? && push = pushes[capacity - 1]
+      if push = pushes[capacity]
         push.signal
       end
+    end
+
+    def pushes_over_capacity!
+      pushes.slice!(capacity, pushes.size) || []
+    end
+
+    def under_capacity?
+      pushes.size <= capacity
+    end
+
+    def select_statement
+      SelectStatement.instance || NilSelectStatement.instance
+    end
+
+    def select_statement?
+      SelectStatement.instance?
     end
   end
 end

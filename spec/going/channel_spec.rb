@@ -1,14 +1,6 @@
 require 'going'
 
 describe Going::Channel do
-  before(:all) do
-    @abort_on_exception = Thread.abort_on_exception
-    Thread.abort_on_exception = true
-  end
-  after(:all) do
-    Thread.abort_on_exception = @abort_on_exception
-  end
-
   subject(:channel) { Going::Channel.new }
   let(:buffered_channel) { Going::Channel.new 1 }
 
@@ -181,9 +173,17 @@ describe Going::Channel do
       expect(elapsed_time(now)).to be > 0.2
     end
 
-    it 'throws :close if channel is closed' do
-      channel.close
-      expect { channel.receive }.to throw_symbol(:close)
+    context 'when closed' do
+      it 'returns next message if any' do
+        buffered_channel.push 1
+        buffered_channel.close
+        expect(buffered_channel.receive).to eq(1)
+      end
+
+      it 'throws :close if no messages' do
+        channel.close
+        expect { channel.receive }.to throw_symbol(:close)
+      end
     end
   end
 

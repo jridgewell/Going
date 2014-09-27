@@ -17,6 +17,10 @@
 
 require 'going'
 
+Thread.abort_on_exception = true
+
+Dir.glob(File.join(File.dirname(File.absolute_path(__FILE__)), 'support', '*.rb')) { |file| require file}
+
 RSpec.configure do |config|
   config.filter_run :focus
   config.run_all_when_everything_filtered = true
