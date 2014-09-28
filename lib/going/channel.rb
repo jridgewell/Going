@@ -94,7 +94,7 @@ module Going
 
         pop.wait(mutex)
 
-        throw :close if closed? && pop.incomplete? && !select_statement?
+        throw :close if closed? && !select_statement? && pop.incomplete?
         pop.message
       end
     end
