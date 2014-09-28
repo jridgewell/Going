@@ -16,6 +16,7 @@
 # See http://rubydoc.info/gems/rspec-core/RSpec/Core/Configuration
 
 require 'going'
+require 'timeout'
 
 Thread.abort_on_exception = true
 
@@ -40,5 +41,11 @@ RSpec.configure do |config|
   config.mock_with :rspec do |mocks|
     mocks.syntax = :expect
     mocks.verify_partial_doubles = true
+  end
+
+  config.around(:each) do |example|
+    Timeout::timeout(5) do
+      example.run
+    end
   end
 end
