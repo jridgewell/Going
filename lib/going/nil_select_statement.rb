@@ -19,5 +19,11 @@ module Going
     def once
       yield
     end
+
+    def complete(*args)
+    end
+
+    def secondary_complete(*args)
+    end
   end
 end

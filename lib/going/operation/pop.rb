@@ -7,7 +7,7 @@ module Going
 
           super()
           push.complete
-          notify_select_statement if select_statement?
+          notify_select_statement
           true
         end
       end
@@ -15,7 +15,7 @@ module Going
 
     def close
       super
-      notify_select_statement if select_statement?
+      notify_select_statement
     end
 
     private
