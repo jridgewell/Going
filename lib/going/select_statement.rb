@@ -1,5 +1,3 @@
-require 'singleton'
-
 module Going
 
   class SelectStatement
@@ -42,8 +40,6 @@ module Going
 
       @args = nil
       @on_complete = nil
-      @secondary_args = nil
-      @secondary_complete = nil
     end
 
     def select(&blk)
@@ -56,20 +52,16 @@ module Going
 
       wait
       cleanup
-      if completed?
-        @on_complete.call(*@args) if @on_complete
-      elsif secondary_completed?
-        @secondary_complete.call(*@secondary_args) if @secondary_complete
-      end
+      call_completion_block
     end
 
-    def when_complete(operation, &callback)
-      when_completes << proc { callback.call(operation) }
+    def when_complete(*args, &callback)
+      when_completes << proc { callback.call(*args) }
     end
 
     def complete(*args, &on_complete)
       complete_mutex.synchronize do
-        unless completed?
+        if incomplete?
           @args = args
           @on_complete = on_complete
           @completed = true
@@ -80,9 +72,9 @@ module Going
 
     def secondary_complete(*args, &on_complete)
       complete_mutex.synchronize do
-        if incomplete? && !secondary_completed?
-          @secondary_args = args
-          @secondary_complete = on_complete
+        if incomplete? && secondary_incomplete?
+          @args = args
+          @on_complete = on_complete
           @secondary_completed = true
           semaphore.signal
         end
@@ -90,7 +82,7 @@ module Going
     end
 
     def once(*args, &blk)
-      synchronize do
+      mutex.synchronize do
         yield(*args) if block_given? && incomplete?
       end
     end
@@ -98,18 +90,19 @@ module Going
     private
 
     attr_reader :semaphore, :mutex, :complete_mutex, :when_completes
+    attr_reader :on_complete, :args
     battr_reader :completed, :secondary_completed
 
     def incomplete?
       !completed?
     end
 
-    def synchronize(&blk)
-      mutex.synchronize(&blk)
+    def secondary_incomplete?
+      !secondary_completed?
     end
 
     def wait
-      synchronize do
+      mutex.synchronize do
         semaphore.wait(mutex) until wake?
       end
     end
@@ -121,26 +114,9 @@ module Going
     def cleanup
       when_completes.each(&:call)
     end
-  end
 
-  class NilSelectStatement
-    include Singleton
-
-    def !=(other)
-      true
-    end
-
-    def !
-      true
-    end
-
-    def nil?
-      true
-    end
-
-    def once
-      yield
+    def call_completion_block
+      on_complete.call(*args) if on_complete
     end
   end
-
 end

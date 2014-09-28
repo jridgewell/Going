@@ -2,7 +2,7 @@ require 'going'
 
 describe Going::SelectStatement do
   let(:channel) { Going::Channel.new }
-  let(:buffered_channel) { Going::Channel.new(1) }
+  let(:buffered_channel) { Going::Channel.new 1 }
   let(:spy) { Spy.new }
   let(:dont_call) { Spy.new }
 
@@ -80,15 +80,14 @@ describe Going::SelectStatement do
     end
 
     it 'does not complete other operations if already succeeded' do
-      i = nil
       Going.select do |s|
-        channel.push 1
+        buffered_channel.receive(&dont_call)
         s.default
         Going.go do
-          i = channel.receive
+          buffered_channel.push 1
         end.join
       end
-      expect(i).to eq(nil)
+      expect(dont_call).not_to be_called
     end
 
     it 'does not preserve channel operations that are not selected' do

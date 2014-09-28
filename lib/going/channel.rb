@@ -55,13 +55,13 @@ module Going
         push = Push.new(message: obj, select_statement: select_statement, &on_complete)
         pushes << push
 
-        if pop_index = pops.index { |x| select_statement != x.select_statement }
+        if pop_index = pops.index { |pop| select_statement != pop.select_statement }
           pair_with_pop(push, pop_index)
         end
-        select_statement.when_complete(push, &method(:remove_push)) if select_statement?
+        select_statement.when_complete(push, :pushes, &method(:remove_operation)) if select_statement?
 
         push.complete if under_capacity?
-        push.signal if closed? || select_statement?
+        push.signal if select_statement?
         push.close if closed?
 
         push.wait(mutex)
@@ -86,13 +86,14 @@ module Going
         pop = Pop.new(select_statement: select_statement, &on_complete)
         pops << pop
 
-        if push_index = pushes.index { |x| select_statement != x.select_statement }
+        if push_index = pushes.index { |push| select_statement != push.select_statement }
           pair_with_push(pop, push_index)
         end
-        select_statement.when_complete(pop, &method(:remove_pop)) if select_statement?
+        select_statement.when_complete(pop, :pops, &method(:remove_operation)) if select_statement?
 
-        pop.signal if pushes.any? || closed? || select_statement?
+        pop.signal if select_statement?
         pop.close if closed?
+
         pop.wait(mutex)
 
         throw :close if closed? && pop.incomplete? && !select_statement?
@@ -159,24 +160,17 @@ module Going
       end
     end
 
-    def remove_pop(pop)
+    def remove_operation(operation, queue_name)
+      queue = queue_name == :pushes ? pushes : pops
       synchronize do
-        index = pops.index(pop)
-        pops.delete_at index if index
-      end
-    end
-
-    def remove_push(push)
-      synchronize do
-        index = pushes.index(push)
-        pushes.delete_at index if index
+        index = queue.index(operation)
+        queue.delete_at index if index
       end
     end
 
     def complete_push_now_channel_under_capacity
-      if push = pushes[capacity]
-        push.complete
-      end
+      push = pushes[capacity]
+      push.complete if push
     end
 
     def pushes_over_capacity!

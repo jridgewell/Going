@@ -4,9 +4,9 @@ module Going
       select_statement.once do
         push.select_statement.once do
           self.message = push.message
-          push.complete
 
           super()
+          push.complete
           notify_select_statement if select_statement?
           true
         end
