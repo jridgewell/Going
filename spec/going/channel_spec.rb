@@ -140,6 +140,28 @@ describe Going::Channel do
     it 'returns the channel' do
       expect(buffered_channel.push(1)).to be(buffered_channel)
     end
+
+    context 'when a pop is from a select_statement' do
+      context 'when select_statement is already completed' do
+        it 'attempts to complete with next pop' do
+          i = nil
+          Going.select do |s|
+            channel.receive
+            s.default
+            th = Going.go do
+              i = channel.receive
+            end
+            Going.go do
+              sleeper channel, :pops, 2
+              channel.push 1
+              th.join
+            end.join
+          end
+
+          expect(i).to be(1)
+        end
+      end
+    end
   end
 
   describe '#pop' do
@@ -184,6 +206,28 @@ describe Going::Channel do
       it 'throws :close if no messages' do
         channel.close
         expect { channel.receive }.to throw_symbol(:close)
+      end
+    end
+
+    context 'when a push is from a select_statement' do
+      context 'when select_statement is already completed' do
+        it 'attempts to complete with next push' do
+          i = nil
+
+          Going.select do |s|
+            channel.push 1
+            s.default
+            Going.go do
+              channel.push 2
+            end
+            Going.go do
+              sleeper channel, :pushes, 2
+              i = channel.receive
+            end.join
+          end
+
+          expect(i).to be(2)
+        end
       end
     end
   end

@@ -55,9 +55,8 @@ module Going
         push = Push.new(message: obj, select_statement: select_statement, &on_complete)
         pushes << push
 
-        if pop_index = pops.index { |pop| select_statement != pop.select_statement }
-          pair_with_pop(push, pop_index)
-        end
+        pair_with_pop push
+
         select_statement.when_complete(push, :pushes, &method(:remove_operation)) if select_statement?
 
         push.complete if under_capacity?
@@ -86,9 +85,8 @@ module Going
         pop = Pop.new(select_statement: select_statement, &on_complete)
         pops << pop
 
-        if push_index = pushes.index { |push| select_statement != push.select_statement }
-          pair_with_push(pop, push_index)
-        end
+        pair_with_push pop
+
         select_statement.when_complete(pop, :pops, &method(:remove_operation)) if select_statement?
 
         pop.signal if select_statement?
@@ -141,22 +139,24 @@ module Going
       mutex.synchronize(&blk)
     end
 
-    def pair_with_push(pop, push_index)
-      push = pushes[push_index]
-
-      if pop.complete(push)
-        complete_push_now_channel_under_capacity
-        pops.pop
-        pushes.delete_at push_index
+    def pair_with_push(pop)
+      pushes.each_with_index.any? do |push, push_index|
+        if push.select_statement != select_statement && pop.complete(push)
+          complete_push_now_channel_under_capacity
+          pops.pop
+          pushes.delete_at push_index
+          true
+        end
       end
     end
 
-    def pair_with_pop(push, pop_index)
-      pop = pops[pop_index]
-
-      if pop.complete(push)
-        pushes.pop
-        pops.delete_at pop_index
+    def pair_with_pop(push)
+      pops.each_with_index.any? do |pop, pop_index|
+        if pop.select_statement != select_statement && pop.complete(push)
+          pushes.pop
+          pops.delete_at pop_index
+          true
+        end
       end
     end
 
