@@ -140,21 +140,21 @@ module Going
     end
 
     def pair_with_push(pop)
-      pushes.each_with_index.any? do |push, push_index|
+      pushes.each_with_index.any? do |push, index|
         if push.select_statement != select_statement && pop.complete(push)
           complete_push_now_channel_under_capacity
           pops.pop
-          pushes.delete_at push_index
+          pushes.delete_at index
           true
         end
       end
     end
 
     def pair_with_pop(push)
-      pops.each_with_index.any? do |pop, pop_index|
+      pops.each_with_index.any? do |pop, index|
         if pop.select_statement != select_statement && pop.complete(push)
           pushes.pop
-          pops.delete_at pop_index
+          pops.delete_at index
           true
         end
       end
