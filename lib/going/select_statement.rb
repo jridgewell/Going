@@ -61,10 +61,11 @@ module Going
 
     def complete(*args, &on_complete)
       complete_mutex.synchronize do
-        if incomplete?
+        if !completed?
           @args = args
           @on_complete = on_complete
           @completed = true
+          @secondary_completed = true
           semaphore.signal
         end
       end
@@ -72,7 +73,7 @@ module Going
 
     def secondary_complete(*args, &on_complete)
       complete_mutex.synchronize do
-        if incomplete? && secondary_incomplete?
+        if !secondary_completed?
           @args = args
           @on_complete = on_complete
           @secondary_completed = true
@@ -83,7 +84,7 @@ module Going
 
     def once(*args, &blk)
       mutex.synchronize do
-        yield(*args) if block_given? && incomplete?
+        yield(*args) if block_given? && !completed?
       end
     end
 
@@ -92,14 +93,6 @@ module Going
     attr_reader :semaphore, :mutex, :complete_mutex, :when_completes
     attr_reader :on_complete, :args
     battr_reader :completed, :secondary_completed
-
-    def incomplete?
-      !completed?
-    end
-
-    def secondary_incomplete?
-      !secondary_completed?
-    end
 
     def wait
       mutex.synchronize do
