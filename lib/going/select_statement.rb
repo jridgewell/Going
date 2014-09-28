@@ -38,7 +38,7 @@ module Going
       @mutex = Mutex.new
       @complete_mutex = Mutex.new
       @semaphore = ConditionVariable.new
-      @operations = []
+      @when_completes = []
 
       @args = nil
       @on_complete = nil
@@ -81,7 +81,7 @@ module Going
     end
 
     def when_complete(operation, &callback)
-      @operations << { operation: operation, callback: callback }
+      when_completes << proc { callback.call(operation) }
     end
 
     # TODO: Separate these into another class
@@ -117,7 +117,7 @@ module Going
 
     private
 
-    attr_reader :semaphore, :mutex, :complete_mutex, :operations
+    attr_reader :semaphore, :mutex, :complete_mutex, :when_completes
     battr_reader :completed, :secondary_completed
 
     def incomplete?
@@ -139,9 +139,7 @@ module Going
     end
 
     def cleanup
-      operations.each do |operation: nil, callback: nil|
-        callback.call(operation)
-      end
+      when_completes.each(&:call)
     end
   end
 
