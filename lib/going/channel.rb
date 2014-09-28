@@ -57,7 +57,7 @@ module Going
 
         pair_with_pop push
 
-        select_statement.when_complete(push, :pushes, &method(:remove_operation)) if select_statement?
+        select_statement.when_complete(push, pushes, &method(:remove_operation)) if select_statement?
 
         push.complete if under_capacity?
         push.signal if select_statement?
@@ -87,7 +87,7 @@ module Going
 
         pair_with_push pop
 
-        select_statement.when_complete(pop, :pops, &method(:remove_operation)) if select_statement?
+        select_statement.when_complete(pop, pops, &method(:remove_operation)) if select_statement?
 
         pop.signal if select_statement?
         pop.close if closed?
@@ -160,8 +160,7 @@ module Going
       end
     end
 
-    def remove_operation(operation, queue_name)
-      queue = queue_name == :pushes ? pushes : pops
+    def remove_operation(operation, queue)
       synchronize do
         index = queue.index(operation)
         queue.delete_at index if index
