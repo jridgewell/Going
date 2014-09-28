@@ -14,6 +14,7 @@ describe Going::Channel do
       Thread.pass
       sleep 0.1
     end until channel.send(queue).size == size
+    expect(channel.send(queue).size).to eq(size)
   end
 
   describe '.new' do
