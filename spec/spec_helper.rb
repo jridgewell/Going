@@ -16,6 +16,11 @@
 # See http://rubydoc.info/gems/rspec-core/RSpec/Core/Configuration
 
 require 'going'
+require 'timeout'
+
+Thread.abort_on_exception = true
+
+Dir.glob(File.join(File.dirname(File.absolute_path(__FILE__)), 'support', '*.rb')) { |file| require file}
 
 RSpec.configure do |config|
   config.filter_run :focus
@@ -36,5 +41,11 @@ RSpec.configure do |config|
   config.mock_with :rspec do |mocks|
     mocks.syntax = :expect
     mocks.verify_partial_doubles = true
+  end
+
+  config.around(:each) do |example|
+    Timeout::timeout(5) do
+      example.run
+    end
   end
 end

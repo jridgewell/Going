@@ -40,8 +40,8 @@ module Going
       synchronize do
         return false if closed?
 
-        pops.each(&:signal).clear
-        pushes.pop.signal while size > capacity
+        pops.each(&:close).clear
+        pushes_over_capacity!.each(&:close)
         @closed = true
       end
     end
@@ -50,15 +50,22 @@ module Going
     # Pushes +obj+ to the channel. If the channel is already full, waits
     # until a thread pops from it.
     #
-    def push(obj)
+    def push(obj, &on_complete)
       synchronize do
-        fail 'cannot push to a closed channel' if closed?
-        push = Push.new(obj)
+        push = Push.new(message: obj, select_statement: select_statement, &on_complete)
+        pushes << push
 
-        pair_with_pop(push) or pushes << push
-        push.wait(mutex) if size > capacity
+        pair_with_pop push
 
-        check_for_close
+        select_statement.when_complete(push, pushes, &method(:remove_operation)) if select_statement?
+
+        push.complete if under_capacity?
+        push.signal if select_statement?
+        push.close if closed?
+
+        push.wait(mutex)
+
+        fail 'cannot push to a closed channel' if closed? && !select_statement?
         self
       end
     end
@@ -73,15 +80,21 @@ module Going
     # Receives data from the channel. If the channel is already empty,
     # waits until a thread pushes to it.
     #
-    def pop
+    def pop(&on_complete)
       synchronize do
-        return if closed?
-        pop = Pop.new
+        pop = Pop.new(select_statement: select_statement, &on_complete)
+        pops << pop
 
-        pair_with_push(pop) or pops << pop
-        pop.wait(mutex) if empty?
+        pair_with_push pop
 
-        check_for_close
+        select_statement.when_complete(pop, pops, &method(:remove_operation)) if select_statement?
+
+        pop.signal if select_statement?
+        pop.close if closed?
+
+        pop.wait(mutex)
+
+        throw :close if closed? && !select_statement? && pop.incomplete?
         pop.message
       end
     end
@@ -96,7 +109,7 @@ module Going
     # Returns the number of messages in the channel
     #
     def size
-      pushes.size
+      [capacity, pushes.size].min
     end
 
     #
@@ -108,7 +121,7 @@ module Going
     # Returns whether the channel is empty.
     #
     def empty?
-      pushes.empty?
+      size == 0
     end
 
     def inspect
@@ -127,28 +140,52 @@ module Going
     end
 
     def pair_with_push(pop)
-      return unless push = pushes.shift
-      pop.message = push.message
-      push.signal
-      signal_channel_now_under_capacity
-      true
-    end
-
-    def pair_with_pop(push)
-      return unless pop = pops.shift
-      pop.message = push.message
-      pop.signal
-      true
-    end
-
-    def signal_channel_now_under_capacity
-      if capacity.nonzero? && push = pushes[capacity - 1]
-        push.signal
+      pushes.each_with_index.any? do |push, index|
+        if push.select_statement != select_statement && pop.complete(push)
+          complete_next_push_now_that_channel_under_capacity
+          pops.pop
+          pushes.delete_at index
+          true
+        end
       end
     end
 
-    def check_for_close
-      throw :close if closed?
+    def pair_with_pop(push)
+      pops.each_with_index.any? do |pop, index|
+        if pop.select_statement != select_statement && pop.complete(push)
+          pushes.pop
+          pops.delete_at index
+          true
+        end
+      end
+    end
+
+    def remove_operation(operation, queue)
+      synchronize do
+        index = queue.index(operation)
+        queue.delete_at index if index
+      end
+    end
+
+    def complete_next_push_now_that_channel_under_capacity
+      push = pushes[capacity]
+      push.complete if push && push.incomplete?
+    end
+
+    def pushes_over_capacity!
+      pushes.slice!(capacity, pushes.size) || []
+    end
+
+    def under_capacity?
+      pushes.size <= capacity
+    end
+
+    def select_statement
+      SelectStatement.instance || NilSelectStatement.instance
+    end
+
+    def select_statement?
+      SelectStatement.instance?
     end
   end
 end
