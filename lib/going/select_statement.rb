@@ -84,7 +84,7 @@ module Going
 
     def once(*args, &blk)
       mutex.synchronize do
-        yield(*args) if block_given? && !completed?
+        yield(*args) if block_given? && incomplete?
       end
     end
 
@@ -97,6 +97,12 @@ module Going
     def wait
       complete_mutex.synchronize do
         semaphore.wait(complete_mutex) until wake?
+      end
+    end
+
+    def incomplete?
+      complete_mutex.synchronize do
+        !completed?
       end
     end
 
