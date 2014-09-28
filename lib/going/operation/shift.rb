@@ -1,5 +1,5 @@
 module Going
-  class Pop < Operation
+  class Shift < Operation
     def complete(push)
       select_statement.once do
         push.select_statement.once do
