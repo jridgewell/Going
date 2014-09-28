@@ -72,11 +72,16 @@ module Going
       end
 
       wait
+      cleanup
       if completed?
         @on_complete.call(*@args) if @on_complete
       elsif secondary_completed?
         @secondary_complete.call(*@secondary_args) if @secondary_complete
       end
+    end
+
+    def when_complete(operation, &callback)
+      @operations << { operation: operation, callback: callback }
     end
 
     # TODO: Separate these into another class
@@ -110,14 +115,9 @@ module Going
       end
     end
 
-    # TODO: Separate these into another class
-    def register(operation, queue)
-      @operations << { operation: operation, queue: queue }
-    end
-
     private
 
-    attr_reader :semaphore, :mutex, :complete_mutex
+    attr_reader :semaphore, :mutex, :complete_mutex, :operations
     battr_reader :completed, :secondary_completed
 
     def incomplete?
@@ -137,6 +137,12 @@ module Going
     def wake?
       completed? || secondary_completed?
     end
+
+    def cleanup
+      operations.each do |operation: nil, callback: nil|
+        callback.call(operation)
+      end
+    end
   end
 
   class NilSelectStatement
@@ -152,6 +158,10 @@ module Going
 
     def nil?
       true
+    end
+
+    def once
+      yield
     end
   end
 

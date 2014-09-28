@@ -5,7 +5,7 @@ module Going
     attr_accessor :message
     attr_reader :select_statement
 
-    def initialize(message = nil, select_statement:, &on_complete)
+    def initialize(message = nil, select_statement: nil, &on_complete)
       @message = message
       @on_complete = on_complete
 
@@ -48,6 +48,5 @@ module Going
 
     attr_reader :semaphore, :on_complete
     battr_reader :signaled, :completed, :closed, :select_statement
-
   end
 end

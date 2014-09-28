@@ -56,13 +56,9 @@ module Going
         pushes << push
 
         if pop_index = pops.index { |x| select_statement != x.select_statement }
-          if select_statement?
-            select_statement.once(push, pop_index, &method(:pair_with_pop))
-            select_statement.register(push, pushes)
-          else
-            pair_with_pop(push, pop_index)
-          end
+          pair_with_pop(push, pop_index)
         end
+        select_statement.when_complete(push, &method(:remove_push)) if select_statement?
 
         push.complete if under_capacity?
         push.signal if closed? || select_statement?
@@ -91,13 +87,9 @@ module Going
         pops << pop
 
         if push_index = pushes.index { |x| select_statement != x.select_statement }
-          if select_statement?
-            select_statement.once(pop, push_index, &method(:pair_with_push))
-            select_statement.register(pop, pops)
-          else
-            pair_with_push(pop, push_index)
-          end
+          pair_with_push(pop, push_index)
         end
+        select_statement.when_complete(pop, &method(:remove_pop)) if select_statement?
 
         pop.signal if pushes.any? || closed? || select_statement?
         pop.close if closed?
@@ -150,28 +142,40 @@ module Going
 
     def pair_with_push(pop, push_index)
       push = pushes[push_index]
-      pop.message = push.message
-      push.complete
-      pop.complete
-      signal_channel_now_under_capacity
 
-      pops.pop
-      pushes.delete_at push_index
+      if pop.complete(push)
+        complete_push_now_channel_under_capacity
+        pops.pop
+        pushes.delete_at push_index
+      end
     end
 
     def pair_with_pop(push, pop_index)
       pop = pops[pop_index]
-      pop.message = push.message
-      push.complete
-      pop.complete
 
-      pushes.pop
-      pops.delete_at pop_index
+      if pop.complete(push)
+        pushes.pop
+        pops.delete_at pop_index
+      end
     end
 
-    def signal_channel_now_under_capacity
+    def remove_pop(pop)
+      synchronize do
+        index = pops.index(pop)
+        pops.delete_at index if index
+      end
+    end
+
+    def remove_push(push)
+      synchronize do
+        index = pushes.index(push)
+        pushes.delete_at index if index
+      end
+    end
+
+    def complete_push_now_channel_under_capacity
       if push = pushes[capacity]
-        push.signal
+        push.complete
       end
     end
 

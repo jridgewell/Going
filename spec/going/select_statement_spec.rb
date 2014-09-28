@@ -41,23 +41,25 @@ describe Going::SelectStatement do
     end
 
     it 'calls block on operation that succeeds' do
+      third_channel = Going::Channel.new 1
       Going.select do |s|
-        channel.receive
+        channel.receive(&dont_call)
         buffered_channel.push(1, &spy)
+        third_channel.push(2, &dont_call)
       end
       expect(spy).to be_called
+      expect(dont_call).not_to be_called
     end
 
     it 'does not call other blocks' do
-      th = nil
       Going.select do |s|
         channel.push(1, &dont_call)
         buffered_channel.push 2
-        th = Going.go do
+        Going.go do
           channel.receive
         end
       end
-      th.join
+      sleeper channel, :pops, 1
       expect(dont_call).not_to be_called
     end
 
@@ -98,6 +100,19 @@ describe Going::SelectStatement do
         end
       end
       expect(buffered_channel.size).to eq(0)
+    end
+
+    context 'buffered channels' do
+      it 'succeeds when blocked push is now under capacity' do
+        buffered_channel.push 1
+        Going.select do |s|
+          buffered_channel.push(2, &spy)
+          Going.go do
+            buffered_channel.receive
+          end
+        end
+        expect(spy).to be_called
+      end
     end
   end
 
