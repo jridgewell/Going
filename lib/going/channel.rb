@@ -2,7 +2,7 @@ module Going
   #
   # This class represents message channels of specified capacity.
   # The push operation may be blocked if the capacity is full.
-  # The pop operation may be blocked if no messages have been sent.
+  # The shift operation may be blocked if no messages have been sent.
   #
   class Channel
     extend BooleanAttrReader
@@ -15,7 +15,7 @@ module Going
       @capacity = capacity
 
       @pushes = []
-      @pops = []
+      @shifts = []
 
       @closed = false
       @mutex = Mutex.new
@@ -40,7 +40,7 @@ module Going
       synchronize do
         return false if closed?
 
-        pops.each(&:close).clear
+        shifts.each(&:close).clear
         pushes_over_capacity!.each(&:close)
         @closed = true
       end
@@ -48,14 +48,14 @@ module Going
 
     #
     # Pushes +obj+ to the channel. If the channel is already full, waits
-    # until a thread pops from it.
+    # until a thread shifts from it.
     #
     def push(obj, &on_complete)
       synchronize do
         push = Push.new(message: obj, select_statement: select_statement, &on_complete)
         pushes << push
 
-        pair_with_pop push
+        pair_with_shift push
 
         select_statement.when_complete(push, pushes, &method(:remove_operation)) if select_statement?
 
@@ -80,30 +80,30 @@ module Going
     # Receives data from the channel. If the channel is already empty,
     # waits until a thread pushes to it.
     #
-    def pop(&on_complete)
+    def shift(&on_complete)
       synchronize do
-        pop = Pop.new(select_statement: select_statement, &on_complete)
-        pops << pop
+        shift = Shift.new(select_statement: select_statement, &on_complete)
+        shifts << shift
 
-        pair_with_push pop
+        pair_with_push shift
 
-        select_statement.when_complete(pop, pops, &method(:remove_operation)) if select_statement?
+        select_statement.when_complete(shift, shifts, &method(:remove_operation)) if select_statement?
 
-        pop.signal if select_statement?
-        pop.close if closed?
+        shift.signal if select_statement?
+        shift.close if closed?
 
-        pop.wait(mutex)
+        shift.wait(mutex)
 
-        throw :close if closed? && !select_statement? && pop.incomplete?
-        pop.message
+        throw :close if closed? && !select_statement? && shift.incomplete?
+        shift.message
       end
     end
 
     #
-    # Alias of pop
+    # Alias of shift
     #
-    alias_method :receive, :pop
-    alias_method :next, :pop
+    alias_method :receive, :shift
+    alias_method :next, :shift
 
     #
     # Returns the number of messages in the channel
@@ -133,28 +133,28 @@ module Going
 
     private
 
-    attr_reader :mutex, :pushes, :pops
+    attr_reader :mutex, :pushes, :shifts
 
     def synchronize(&blk)
       mutex.synchronize(&blk)
     end
 
-    def pair_with_push(pop)
+    def pair_with_push(shift)
       pushes.each_with_index.any? do |push, index|
-        if push.select_statement != select_statement && pop.complete(push)
+        if push.select_statement != select_statement && shift.complete(push)
           complete_next_push_now_that_channel_under_capacity
-          pops.pop
+          shifts.pop
           pushes.delete_at index
           true
         end
       end
     end
 
-    def pair_with_pop(push)
-      pops.each_with_index.any? do |pop, index|
-        if pop.select_statement != select_statement && pop.complete(push)
+    def pair_with_shift(push)
+      shifts.each_with_index.any? do |shift, index|
+        if shift.select_statement != select_statement && shift.complete(push)
           pushes.pop
-          pops.delete_at index
+          shifts.delete_at index
           true
         end
       end

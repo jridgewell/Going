@@ -67,9 +67,9 @@ describe Going::Channel do
       expect { channel.push 1 }.to raise_error
     end
 
-    it 'will wake a blocked pop' do
+    it 'will wake a blocked shift' do
       Going.go do
-        sleeper channel, :pops, 1
+        sleeper channel, :shifts, 1
         channel.close
       end
       expect { channel.receive }.to throw_symbol(:close)
@@ -141,9 +141,9 @@ describe Going::Channel do
       expect(buffered_channel.push(1)).to be(buffered_channel)
     end
 
-    context 'when a pop is from a select_statement' do
+    context 'when a shift is from a select_statement' do
       context 'when select_statement is already completed' do
-        it 'attempts to complete with next pop' do
+        it 'attempts to complete with next shift' do
           i = nil
           Going.select do |s|
             channel.receive
@@ -152,7 +152,7 @@ describe Going::Channel do
               i = channel.receive
             end
             Going.go do
-              sleeper channel, :pops, 2
+              sleeper channel, :shifts, 2
               channel.push 1
               th.join
             end.join
@@ -164,13 +164,13 @@ describe Going::Channel do
     end
   end
 
-  describe '#pop' do
+  describe '#shift' do
     it 'is aliased as #receive' do
-      expect(channel.method(:receive)).to eq(channel.method(:pop))
+      expect(channel.method(:receive)).to eq(channel.method(:shift))
     end
 
     it 'is aliased as #next' do
-      expect(channel.method(:next)).to eq(channel.method(:pop))
+      expect(channel.method(:next)).to eq(channel.method(:shift))
     end
 
     it 'returns the next message' do
@@ -187,7 +187,7 @@ describe Going::Channel do
 
     it 'will block if channel is empty' do
       Going.go do
-        sleeper channel, :pops, 1
+        sleeper channel, :shifts, 1
         sleep 0.25
         channel.push 1
       end

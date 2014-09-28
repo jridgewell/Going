@@ -5,7 +5,7 @@ require 'going/select_statement'
 require 'going/nil_select_statement'
 require 'going/select_helper'
 require 'going/operation'
-require 'going/operation/pop'
+require 'going/operation/shift'
 require 'going/operation/push'
 require 'going/version'
 

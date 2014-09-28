@@ -60,7 +60,7 @@ describe Going::SelectStatement do
           channel.receive
         end
       end
-      sleeper channel, :pops, 1
+      sleeper channel, :shifts, 1
       expect(dont_call).not_to be_called
     end
 
