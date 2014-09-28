@@ -169,7 +169,7 @@ module Going
 
     def complete_next_push_now_that_channel_under_capacity
       push = pushes[capacity]
-      push.complete if push
+      push.complete if push && push.incomplete?
     end
 
     def pushes_over_capacity!
