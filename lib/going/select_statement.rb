@@ -46,29 +46,12 @@ module Going
       @secondary_complete = nil
     end
 
-    def default(&blk)
-      Channel.new(1) do |ch|
-        ch.push(nil, &blk)
-      end
-    end
-
-    def timeout(seconds, &blk)
-      Channel.new do |ch|
-        Going.go do
-          sleep seconds
-          ch.receive
-        end
-        ch.push(nil, &blk)
-      end
-    end
-
-
-    # TODO: Separate these into another class
     def select(&blk)
+      select_helper = SelectHelper.instance
       if blk.arity == 1
-        yield self
+        yield select_helper
       else
-        instance_eval(&blk)
+        select_helper.instance_eval(&blk)
       end
 
       wait
@@ -84,7 +67,6 @@ module Going
       when_completes << proc { callback.call(operation) }
     end
 
-    # TODO: Separate these into another class
     def complete(*args, &on_complete)
       complete_mutex.synchronize do
         unless completed?
@@ -96,7 +78,6 @@ module Going
       end
     end
 
-    # TODO: Separate these into another class
     def secondary_complete(*args, &on_complete)
       complete_mutex.synchronize do
         if incomplete? && !secondary_completed?
@@ -108,7 +89,6 @@ module Going
       end
     end
 
-    # TODO: Separate these into another class
     def once(*args, &blk)
       synchronize do
         yield(*args) if block_given? && incomplete?
