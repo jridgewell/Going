@@ -52,7 +52,7 @@ module Going
     #
     def push(obj, &on_complete)
       synchronize do
-        push = Push.new(obj, select_statement: select_statement, &on_complete)
+        push = Push.new(message: obj, select_statement: select_statement, &on_complete)
         pushes << push
 
         if pop_index = pops.index { |x| select_statement != x.select_statement }

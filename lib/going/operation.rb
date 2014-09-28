@@ -5,15 +5,15 @@ module Going
     attr_accessor :message
     attr_reader :select_statement
 
-    def initialize(message = nil, select_statement: nil, &on_complete)
-      @message = message
+    def initialize(opts = {}, &on_complete)
+      @message = opts[:message]
+      @select_statement = opts[:select_statement]
       @on_complete = on_complete
 
       @completed = false
       @closed = false
       @signaled = false
 
-      @select_statement = select_statement
       @semaphore = ConditionVariable.new
     end
 
