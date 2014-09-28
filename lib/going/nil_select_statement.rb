@@ -1,5 +1,3 @@
-require 'singleton'
-
 module Going
   class NilSelectStatement
     include Singleton

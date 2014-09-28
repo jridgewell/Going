@@ -1,5 +1,3 @@
-require 'singleton'
-
 module Going
   #
   # Helper methods to emulate Go's Select Cases.

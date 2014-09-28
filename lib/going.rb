@@ -1,4 +1,6 @@
 require 'thread'
+require 'singleton'
+
 require 'going/boolean_attr_reader'
 require 'going/channel'
 require 'going/select_statement'
