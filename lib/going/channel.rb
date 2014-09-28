@@ -142,7 +142,7 @@ module Going
     def pair_with_push(pop)
       pushes.each_with_index.any? do |push, index|
         if push.select_statement != select_statement && pop.complete(push)
-          complete_push_now_channel_under_capacity
+          complete_next_push_now_that_channel_under_capacity
           pops.pop
           pushes.delete_at index
           true
@@ -167,7 +167,7 @@ module Going
       end
     end
 
-    def complete_push_now_channel_under_capacity
+    def complete_next_push_now_that_channel_under_capacity
       push = pushes[capacity]
       push.complete if push
     end
