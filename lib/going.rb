@@ -17,6 +17,12 @@ module Going
     Thread.new(*args, &blk)
   end
 
+  #
+  # Creates a synchronous block that will select the first
+  # channel operation to complete. Only one operation inside
+  # the block will complete and any operations that are
+  # incomplete will be removed afterwards.
+  #
   def self.select(&blk)
     fail 'a block must be passed' unless block_given?
     select = SelectStatement.new_instance
