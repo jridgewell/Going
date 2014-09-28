@@ -33,7 +33,7 @@ module Going
 
     def initialize
       @completed = false
-      @mutex = Mutex.new
+      @once_mutex = Mutex.new
       @complete_mutex = Mutex.new
       @semaphore = ConditionVariable.new
       @when_completes = []
@@ -83,14 +83,14 @@ module Going
     end
 
     def once(*args, &blk)
-      mutex.synchronize do
+      once_mutex.synchronize do
         yield(*args) if block_given? && incomplete?
       end
     end
 
     private
 
-    attr_reader :semaphore, :mutex, :complete_mutex, :when_completes
+    attr_reader :semaphore, :once_mutex, :complete_mutex, :when_completes
     attr_reader :on_complete, :args
     battr_reader :completed, :secondary_completed
 
