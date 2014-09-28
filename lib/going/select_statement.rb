@@ -95,8 +95,8 @@ module Going
     battr_reader :completed, :secondary_completed
 
     def wait
-      mutex.synchronize do
-        semaphore.wait(mutex) until wake?
+      complete_mutex.synchronize do
+        semaphore.wait(complete_mutex) until wake?
       end
     end
 
