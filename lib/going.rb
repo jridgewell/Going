@@ -27,8 +27,13 @@ module Going
   #
   def self.select(&blk)
     fail 'a block must be passed' unless block_given?
+
     select = SelectStatement.new_instance
     select.select(&blk)
     SelectStatement.reset
+
+    select.call_completion_block
+
+    nil
   end
 end

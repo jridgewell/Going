@@ -102,6 +102,14 @@ describe Going::SelectStatement do
       expect(buffered_channel.size).to eq(0)
     end
 
+    it 'calls succeeding block after the select_statement has been evaluated' do
+      Going.select do |s|
+        s.default do
+          expect(Going::SelectStatement.instance).to be_nil
+        end
+      end
+    end
+
     context 'buffered channels' do
       it 'succeeds when blocked push is now under capacity' do
         buffered_channel.push 1

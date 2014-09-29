@@ -52,7 +52,6 @@ module Going
 
       wait
       cleanup
-      call_completion_block
     end
 
     def when_complete(*args, &callback)
@@ -88,6 +87,10 @@ module Going
       end
     end
 
+    def call_completion_block
+      on_complete.call(*args) if on_complete
+    end
+
     private
 
     attr_reader :semaphore, :once_mutex, :complete_mutex, :when_completes
@@ -112,10 +115,6 @@ module Going
 
     def cleanup
       when_completes.each(&:call)
-    end
-
-    def call_completion_block
-      on_complete.call(*args) if on_complete
     end
   end
 end
