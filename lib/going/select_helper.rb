@@ -21,7 +21,7 @@ module Going
       Channel.new do |ch|
         Going.go do
           sleep seconds
-          ch.receive
+          ch.shift
         end
         ch.push(nil, &blk)
       end
