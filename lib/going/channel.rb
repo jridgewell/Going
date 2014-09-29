@@ -124,6 +124,22 @@ module Going
       size == 0
     end
 
+    #
+    # Calls the given block once for each message until the channel is closed,
+    # passing that message as a parameter.
+    #
+    # Note that this is a destructive action, since each message is `shift`ed.
+    #
+    def each
+      return enum_for(:each) unless block_given?
+
+      catch :close do
+        loop do
+          yield self.shift
+        end
+      end
+    end
+
     def inspect
       inspection = [:capacity, :size].map do |attr|
         "#{attr}: #{send(attr).inspect}"
