@@ -285,4 +285,26 @@ describe Going::Channel do
       end
     end
   end
+
+  describe '#each' do
+    it 'yields for each message until channel is closed' do
+      Going.go do
+        10.times do |i|
+          channel.push i
+        end
+        channel.close
+      end
+
+      i = 0
+      channel.each do |message|
+        expect(message).to eq(i)
+        i += 1
+      end
+      expect(i).to eq(10)
+    end
+
+    it 'returns an enumerator if no block is given' do
+      expect(channel.each).to be_an Enumerator
+    end
+  end
 end
