@@ -33,10 +33,16 @@ module Going
 
     def initialize
       @completed = false
+      @secondary_completed = false
+      @defaulted = false
+
       @once_mutex = Mutex.new
       @complete_mutex = Mutex.new
       @semaphore = ConditionVariable.new
       @when_completes = {}
+
+      @args = []
+      @on_complete = nil
     end
 
     def select(&blk)
@@ -79,6 +85,17 @@ module Going
       end
     end
 
+    def default(&on_complete)
+      complete_mutex.synchronize do
+        fail 'multiple defaults in select' if defaulted?
+        if !completed?
+          @on_complete = on_complete
+          @defaulted = true
+          @secondary_completed = true
+        end
+      end
+    end
+
     def once(*args, &blk)
       once_mutex.synchronize do
         yield(*args) if block_given? && incomplete?
@@ -93,7 +110,7 @@ module Going
 
     attr_reader :semaphore, :once_mutex, :complete_mutex, :when_completes
     attr_reader :on_complete, :args, :completed_operation
-    battr_reader :completed, :secondary_completed
+    battr_reader :completed, :secondary_completed, :defaulted
 
     def wait
       complete_mutex.synchronize do

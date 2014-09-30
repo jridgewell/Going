@@ -84,10 +84,8 @@ describe Going::SelectStatement do
       Going.select do |s|
         buffered_channel.receive(&dont_call)
         s.default
-        Going.go do
-          buffered_channel.push 1
-        end.join
       end
+      buffered_channel.push 1
       expect(dont_call).not_to be_called
     end
 
@@ -104,11 +102,13 @@ describe Going::SelectStatement do
     end
 
     it 'calls succeeding block after the select_statement has been evaluated' do
+      select_statement = false
       Going.select do |s|
         s.default do
-          expect(Going::SelectStatement.instance).to be_nil
+          select_statement = Going::SelectStatement.instance
         end
       end
+      expect(select_statement).to be_nil
     end
 
     context 'buffered channels' do
@@ -394,6 +394,23 @@ describe Going::SelectStatement do
         s.default(&dont_call)
       end
       expect(dont_call).not_to be_called
+    end
+
+    it 'is not called if select statement will succeed' do
+      Going.select do |s|
+        s.default(&dont_call)
+        buffered_channel.push 1
+      end
+      expect(dont_call).not_to be_called
+    end
+
+    it 'raises error if second default statement' do
+      expect do
+        Going.select do |s|
+          s.default
+          s.default
+        end
+      end.to raise_error
     end
 
     it 'will be prioritized over a push on a closed channel' do
