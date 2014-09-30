@@ -134,8 +134,8 @@ end
 For a channel `ch`, the method `ch.close` records that no more values
 will be sent on the channel. Sending to a closed channel causes an
 exception to be thrown. After calling `#close`, and after any previously
-sent values have been received, receive operations will throw the
-`:close` symbol.
+sent values have been received, receive operations will raise
+`StopIteration`.
 
 ```ruby
 ch = Going::Channel.new 2
@@ -155,9 +155,10 @@ end
 # You may receive already sent values
 ch.receive # => 1
 
-# Closed channels throw when there are no more messages
-catch :close do
+begin
     ch.receive
+rescue StopIteration
+    # Closed channels raise StopIteration when there are no more messages
 end
 ```
 

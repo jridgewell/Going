@@ -72,7 +72,7 @@ describe Going::Channel do
         sleeper channel, :shifts, 1
         channel.close
       end
-      expect { channel.receive }.to throw_symbol(:close)
+      expect { channel.receive }.to raise_error(StopIteration)
     end
 
     it 'will reject all but the first #capacity pushes' do
@@ -203,9 +203,9 @@ describe Going::Channel do
         expect(buffered_channel.receive).to eq(1)
       end
 
-      it 'throws :close if no messages' do
+      it 'raises StopIteration if no messages' do
         channel.close
-        expect { channel.receive }.to throw_symbol(:close)
+        expect { channel.receive }.to raise_error(StopIteration)
       end
     end
 

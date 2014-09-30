@@ -94,7 +94,7 @@ module Going
 
         shift.wait(mutex)
 
-        throw :close if closed? && !select_statement? && shift.incomplete?
+        fail StopIteration, 'channel closed' if closed? && !select_statement? && shift.incomplete?
         shift.message
       end
     end
@@ -133,10 +133,8 @@ module Going
     def each
       return enum_for(:each) unless block_given?
 
-      catch :close do
-        loop do
-          yield self.shift
-        end
+      loop do
+        yield self.shift
       end
     end
 
