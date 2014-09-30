@@ -92,14 +92,41 @@ describe Going::SelectStatement do
     end
 
     it 'does not preserve channel operations that are not selected' do
+      buffered_channel = Going::Channel.new 2
       Going.select do |s|
         buffered_channel.push 1
         buffered_channel.push 2
-        Going.go do
-          buffered_channel.receive
+      end
+      expect(buffered_channel.size).to eq(1)
+    end
+
+    context 'when an error is raised' do
+      let(:buffered_channel) { Going::Channel.new 2 }
+
+      it 'does not preserve channel operations when raised in on_complete block' do
+        begin
+          Going.select do |s|
+            buffered_channel.push(1) { fail }
+            buffered_channel.push 2
+          end
+        rescue
+          expect(buffered_channel.size).to eq(1)
         end
       end
-      expect(buffered_channel.size).to eq(0)
+
+      it 'does not preserve channel operations when raised inline' do
+        begin
+          Going.select do |s|
+            buffered_channel.push 1
+            buffered_channel.push 2
+            fail
+          end
+        rescue
+          # TODO: Should be zero
+          # Need to implement deferred completion
+          expect(buffered_channel.size).to eq(1)
+        end
+      end
     end
 
     it 'calls succeeding block after the select_statement has been evaluated' do
@@ -111,6 +138,13 @@ describe Going::SelectStatement do
     end
 
     context 'buffered channels' do
+      it 'will preserve an incomplete push' do
+        Going.select do |s|
+          buffered_channel.push(1, &spy)
+        end
+        expect(buffered_channel.size).to eq(1)
+      end
+
       it 'succeeds when blocked push is now under capacity' do
         buffered_channel.push 1
         Going.select do |s|
@@ -319,6 +353,32 @@ describe Going::SelectStatement do
         s.default(&dont_call)
       end
       expect(dont_call).not_to be_called
+    end
+
+    it 'is not called if select statement succeeds' do
+      Going.select do |s|
+        s.default(&dont_call)
+        buffered_channel.push 1
+      end
+      expect(dont_call).not_to be_called
+    end
+
+    it 'will be prioritized over a push on a closed channel' do
+      channel.close
+      Going.select do |s|
+        s.default(&spy)
+        channel.push 1
+      end
+      expect(spy).to be_called
+    end
+
+    it 'is prioritized over a push on a closed channel' do
+      channel.close
+      Going.select do |s|
+        channel.push 1
+        s.default(&spy)
+      end
+      expect(spy).to be_called
     end
 
     it 'calls its block on success' do

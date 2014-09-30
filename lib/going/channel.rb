@@ -57,7 +57,7 @@ module Going
 
         pair_with_shift push
 
-        select_statement.when_complete(push, pushes, &method(:remove_operation)) if select_statement?
+        select_statement.when_complete(push) { remove_operation(push, pushes) } if select_statement?
 
         push.complete if under_capacity?
         push.signal if select_statement?
@@ -87,7 +87,7 @@ module Going
 
         pair_with_push shift
 
-        select_statement.when_complete(shift, shifts, &method(:remove_operation)) if select_statement?
+        select_statement.when_complete(shift) { remove_operation(shift, shifts) } if select_statement?
 
         shift.signal if select_statement?
         shift.close if closed?
