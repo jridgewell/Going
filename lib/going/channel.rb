@@ -20,7 +20,12 @@ module Going
       @closed = false
       @mutex = Mutex.new
 
-      yield self if block_given?
+      if block_given?
+        Going.go do
+          yield self
+          close
+        end
+      end
     end
 
     #
