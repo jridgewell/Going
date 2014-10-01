@@ -132,6 +132,16 @@ describe Going::SelectStatement do
     end
 
     context 'when an error is raised' do
+      it 'cleans up select_statement' do
+        begin
+          Going.select do |s|
+            fail
+          end
+        rescue
+          expect(Going::SelectStatement.instance).to be_nil
+        end
+      end
+
       it 'does not preserve channel operations when raised in on_complete block' do
         begin
           Going.select do |s|
