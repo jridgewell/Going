@@ -56,7 +56,7 @@ module Going
 
         pair_with_shift push
 
-        select_statement.when_complete(push) { remove_operation(push, pushes) } if select_statement?
+        select_statement.when_complete(push) { remove_push push } if select_statement?
 
         push.complete if under_capacity?
         push.signal if select_statement?
@@ -86,7 +86,7 @@ module Going
 
         pair_with_push shift
 
-        select_statement.when_complete(shift) { remove_operation(shift, shifts) } if select_statement?
+        select_statement.when_complete(shift) { remove_shift shift } if select_statement?
 
         shift.signal if select_statement?
         shift.close if closed?
@@ -175,16 +175,29 @@ module Going
       end
     end
 
-    def remove_operation(operation, queue)
+    def remove_shift(shift)
       synchronize do
-        index = queue.index(operation)
-        queue.delete_at index if index
+        index = shifts.index(shift)
+        shifts.delete_at index if index
+      end
+    end
+
+    def remove_push(push)
+      synchronize do
+        index = pushes.index(push)
+        pushes.delete_at index if index
+        complete_pushes_up_to_capacity
       end
     end
 
     def complete_next_push_now_that_channel_under_capacity
       push = pushes[capacity]
       push.complete if push && push.incomplete?
+    end
+
+    def complete_pushes_up_to_capacity
+      pushes_up_to_capacity = pushes[0, capacity] || []
+      pushes_up_to_capacity.each { |push| push.complete if push.incomplete? }
     end
 
     def pushes_over_capacity!

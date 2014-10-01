@@ -129,6 +129,29 @@ describe Going::SelectStatement do
         end
         expect(spy).to be_called
       end
+
+      it 'completes pushes made from other threads during the select' do
+        buffered_channel = Going::Channel.new 2
+
+        Going.select do |s|
+          # This one completes, and should stay in channel
+          buffered_channel.push 1
+
+          # This one is not selected, and should be removed
+          # making way for the next push (which'll be under capacity)
+          buffered_channel.push 2
+
+          Going.go do
+            # This push should complete once the select completes,
+            # allowing this thread to proceed
+            buffered_channel.push 3
+            channel.push 4
+          end
+          sleeper buffered_channel, :pushes, 3
+        end
+
+        expect(channel.receive).to eq(4)
+      end
     end
 
     context 'when an error is raised' do
