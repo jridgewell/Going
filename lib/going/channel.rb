@@ -190,7 +190,7 @@ module Going
 
     def complete_pushes_up_to_capacity
       pushes_up_to_capacity = pushes[0, capacity] || []
-      pushes_up_to_capacity.each { |push| push.complete if push.incomplete? }
+      pushes_up_to_capacity.select(&:incomplete?).each(&:complete)
     end
 
     def pushes_over_capacity!
