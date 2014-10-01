@@ -157,10 +157,9 @@ module Going
     def pair_with_push(shift)
       pushes.each_with_index.any? do |push, index|
         if push.select_statement != select_statement && shift.complete(push)
-          complete_next_push_now_that_channel_under_capacity
           shifts.pop
           pushes.delete_at index
-          true
+          complete_pushes_up_to_capacity
         end
       end
     end
@@ -170,7 +169,6 @@ module Going
         if shift.select_statement != select_statement && shift.complete(push)
           pushes.pop
           shifts.delete_at index
-          true
         end
       end
     end
@@ -188,11 +186,6 @@ module Going
         pushes.delete_at index if index
         complete_pushes_up_to_capacity
       end
-    end
-
-    def complete_next_push_now_that_channel_under_capacity
-      push = pushes[capacity]
-      push.complete if push && push.incomplete?
     end
 
     def complete_pushes_up_to_capacity
