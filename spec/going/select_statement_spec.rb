@@ -92,41 +92,15 @@ describe Going::SelectStatement do
     end
 
     it 'does not preserve channel operations that are not selected' do
-      buffered_channel = Going::Channel.new 2
       Going.select do |s|
-        buffered_channel.push 1
-        buffered_channel.push 2
+        channel.push 1
+        channel.push 2
+        s.default
       end
-      expect(buffered_channel.size).to eq(1)
-    end
-
-    context 'when an error is raised' do
-      let(:buffered_channel) { Going::Channel.new 2 }
-
-      it 'does not preserve channel operations when raised in on_complete block' do
-        begin
-          Going.select do |s|
-            buffered_channel.push(1) { fail }
-            buffered_channel.push 2
-          end
-        rescue
-          expect(buffered_channel.size).to eq(1)
-        end
+      Going.go do
+        channel.push 3
       end
-
-      it 'does not preserve channel operations when raised inline' do
-        begin
-          Going.select do |s|
-            buffered_channel.push 1
-            buffered_channel.push 2
-            fail
-          end
-        rescue
-          # TODO: Should be zero
-          # Need to implement deferred completion
-          expect(buffered_channel.size).to eq(1)
-        end
-      end
+      expect(channel.receive).to eq(3)
     end
 
     it 'calls succeeding block after the select_statement has been evaluated' do
@@ -154,6 +128,40 @@ describe Going::SelectStatement do
           end
         end
         expect(spy).to be_called
+      end
+    end
+
+    context 'when an error is raised' do
+      it 'does not preserve channel operations when raised in on_complete block' do
+        begin
+          Going.select do |s|
+            channel.push(1) { fail }
+            channel.push 2
+            Going.go do
+              channel.receive
+            end
+          end
+        rescue
+          Going.go do
+            channel.push 3
+          end
+          expect(channel.receive).to eq(3)
+        end
+      end
+
+      it 'does not preserve channel operations when raised inline' do
+        begin
+          Going.select do |s|
+            channel.push 1
+            channel.push 2
+            fail
+          end
+        rescue
+          Going.go do
+            channel.push 3
+          end
+          expect(channel.receive).to eq(3)
+        end
       end
     end
   end
