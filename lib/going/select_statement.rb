@@ -37,10 +37,6 @@ module Going
       @complete_mutex = Mutex.new
       @semaphore = ConditionVariable.new
       @when_completes = {}
-
-      @args = nil
-      @on_complete = nil
-      @completed_operation = nil
     end
 
     def select(&blk)

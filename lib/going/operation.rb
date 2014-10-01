@@ -10,10 +10,6 @@ module Going
       @select_statement = opts[:select_statement]
       @on_complete = on_complete
 
-      @completed = false
-      @closed = false
-      @signaled = false
-
       @semaphore = ConditionVariable.new
     end
 

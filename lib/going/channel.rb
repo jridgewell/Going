@@ -17,7 +17,6 @@ module Going
       @pushes = []
       @shifts = []
 
-      @closed = false
       @mutex = Mutex.new
 
       yield self if block_given?
