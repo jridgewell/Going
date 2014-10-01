@@ -37,10 +37,7 @@ module Going
     end
 
     def inspect
-      inspection = [:completed, :signaled, :closed, :message].map do |attr|
-        "#{attr}: #{send(attr).inspect}"
-      end
-      "#<#{self.class} #{inspection.join(', ')}>"
+      "#<#{self.class} message: #{message.inspect}>"
     end
 
     private
