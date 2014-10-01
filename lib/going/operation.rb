@@ -40,6 +40,13 @@ module Going
       !completed?
     end
 
+    def inspect
+      inspection = [:completed, :signaled, :closed, :message].map do |attr|
+        "#{attr}: #{send(attr).inspect}"
+      end
+      "#<#{self.class} #{inspection.join(', ')}>"
+    end
+
     private
 
     def wake?
