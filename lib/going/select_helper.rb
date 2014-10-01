@@ -9,7 +9,7 @@ module Going
     # A case statement that will succeed immediately.
     #
     def default(&blk)
-      Channel.new(1) do |ch|
+      Channel.new(1).tap do |ch|
         ch.push(nil, &blk)
       end
     end
@@ -18,10 +18,10 @@ module Going
     # A case statement that will succeed after +seconds+ seconds.
     #
     def timeout(seconds, &blk)
-      Channel.new do |ch|
+      Channel.new.tap do |ch|
         Going.go do
           sleep seconds
-          ch.shift
+          ch.receive
         end
         ch.push(nil, &blk)
       end

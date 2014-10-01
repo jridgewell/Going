@@ -30,10 +30,43 @@ describe Going::Channel do
       expect(channel).not_to be_closed
     end
 
-    it 'yields itself if block given' do
-      yielded = nil
-      channel = Going::Channel.new { |y| yielded = y }
-      expect(yielded).to be(channel)
+    context 'when passing a block' do
+      it 'calls block asynchronously' do
+        channel_is_nil = true
+        channel = Going::Channel.new do |ch|
+          channel_is_nil = channel.nil?
+          ch.push 1
+        end
+        channel.receive
+        expect(channel_is_nil).to be(false)
+      end
+
+      it 'yields self if block given' do
+        yielded = nil
+        channel = Going::Channel.new do |ch|
+          yielded = ch
+          ch.push 1
+        end
+        channel.receive
+        expect(yielded).to be(channel)
+      end
+
+      it 'closes channel after block returns' do
+        channel = Going::Channel.new do |ch|
+          ch.push 1
+        end
+        channel.receive
+        expect(channel).to be_closed
+      end
+
+      it 'does not close channel until block returns' do
+        channel = Going::Channel.new do |ch|
+          ch.push 1
+          ch.push 2
+        end
+        channel.receive
+        expect(channel).not_to be_closed
+      end
     end
   end
 
