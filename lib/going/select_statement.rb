@@ -36,10 +36,7 @@ module Going
       @once_mutex = Mutex.new
       @complete_mutex = Mutex.new
       @semaphore = ConditionVariable.new
-      @when_completes = []
-
-      @args = nil
-      @on_complete = nil
+      @when_completes = {}
     end
 
     def select(&blk)
@@ -51,16 +48,18 @@ module Going
       end
 
       wait
+    ensure
       cleanup
     end
 
-    def when_complete(*args, &callback)
-      when_completes << proc { callback.call(*args) }
+    def when_complete(operation, &callback)
+      when_completes[operation] = callback
     end
 
-    def complete(*args, &on_complete)
+    def complete(operation, *args, &on_complete)
       complete_mutex.synchronize do
         if !completed?
+          @completed_operation = operation
           @args = args
           @on_complete = on_complete
           @completed = true
@@ -70,10 +69,9 @@ module Going
       end
     end
 
-    def secondary_complete(*args, &on_complete)
+    def secondary_complete(&on_complete)
       complete_mutex.synchronize do
         if !secondary_completed?
-          @args = args
           @on_complete = on_complete
           @secondary_completed = true
           semaphore.signal
@@ -94,7 +92,7 @@ module Going
     private
 
     attr_reader :semaphore, :once_mutex, :complete_mutex, :when_completes
-    attr_reader :on_complete, :args
+    attr_reader :on_complete, :args, :completed_operation
     battr_reader :completed, :secondary_completed
 
     def wait
@@ -114,7 +112,9 @@ module Going
     end
 
     def cleanup
-      when_completes.each(&:call)
+      when_completes.each do |operation, callback|
+        callback.call unless operation == completed_operation
+      end
     end
   end
 end

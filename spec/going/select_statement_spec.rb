@@ -93,13 +93,14 @@ describe Going::SelectStatement do
 
     it 'does not preserve channel operations that are not selected' do
       Going.select do |s|
-        buffered_channel.push 1
-        buffered_channel.push 2
-        Going.go do
-          buffered_channel.receive
-        end
+        channel.push 1
+        channel.push 2
+        s.default
       end
-      expect(buffered_channel.size).to eq(0)
+      Going.go do
+        channel.push 3
+      end
+      expect(channel.receive).to eq(3)
     end
 
     it 'calls succeeding block after the select_statement has been evaluated' do
@@ -111,6 +112,13 @@ describe Going::SelectStatement do
     end
 
     context 'buffered channels' do
+      it 'will preserve an incomplete push' do
+        Going.select do |s|
+          buffered_channel.push(1, &spy)
+        end
+        expect(buffered_channel.size).to eq(1)
+      end
+
       it 'succeeds when blocked push is now under capacity' do
         buffered_channel.push 1
         Going.select do |s|
@@ -120,6 +128,73 @@ describe Going::SelectStatement do
           end
         end
         expect(spy).to be_called
+      end
+
+      it 'completes pushes made from other threads during the select' do
+        buffered_channel = Going::Channel.new 2
+
+        Going.select do |s|
+          # This one completes, and should stay in channel
+          buffered_channel.push 1
+
+          # This one is not selected, and should be removed
+          # making way for the next push (which'll be under capacity)
+          buffered_channel.push 2
+
+          Going.go do
+            # This push should complete once the select completes,
+            # allowing this thread to proceed
+            buffered_channel.push 3
+            channel.push 4
+          end
+          sleeper buffered_channel, :pushes, 3
+        end
+
+        expect(channel.receive).to eq(4)
+      end
+    end
+
+    context 'when an error is raised' do
+      it 'cleans up select_statement' do
+        begin
+          Going.select do |s|
+            fail
+          end
+        rescue
+          expect(Going::SelectStatement.instance).to be_nil
+        end
+      end
+
+      it 'does not preserve channel operations when raised in on_complete block' do
+        begin
+          Going.select do |s|
+            channel.push(1) { fail }
+            channel.push 2
+            Going.go do
+              channel.receive
+            end
+          end
+        rescue
+          Going.go do
+            channel.push 3
+          end
+          expect(channel.receive).to eq(3)
+        end
+      end
+
+      it 'does not preserve channel operations when raised inline' do
+        begin
+          Going.select do |s|
+            channel.push 1
+            channel.push 2
+            fail
+          end
+        rescue
+          Going.go do
+            channel.push 3
+          end
+          expect(channel.receive).to eq(3)
+        end
       end
     end
   end
@@ -319,6 +394,24 @@ describe Going::SelectStatement do
         s.default(&dont_call)
       end
       expect(dont_call).not_to be_called
+    end
+
+    it 'will be prioritized over a push on a closed channel' do
+      channel.close
+      Going.select do |s|
+        s.default(&spy)
+        channel.push 1
+      end
+      expect(spy).to be_called
+    end
+
+    it 'is prioritized over a push on a closed channel' do
+      channel.close
+      Going.select do |s|
+        channel.push 1
+        s.default(&spy)
+      end
+      expect(spy).to be_called
     end
 
     it 'calls its block on success' do

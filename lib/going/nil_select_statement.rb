@@ -2,8 +2,8 @@ module Going
   class NilSelectStatement
     include Singleton
 
-    def !=(other)
-      true
+    def ==(other)
+      false
     end
 
     def !

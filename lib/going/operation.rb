@@ -2,17 +2,12 @@ module Going
   class Operation
     extend BooleanAttrReader
 
-    attr_accessor :message
-    attr_reader :select_statement
+    attr_reader :message, :select_statement
 
     def initialize(opts = {}, &on_complete)
       @message = opts[:message]
       @select_statement = opts[:select_statement]
       @on_complete = on_complete
-
-      @completed = false
-      @closed = false
-      @signaled = false
 
       @semaphore = ConditionVariable.new
     end
@@ -38,6 +33,10 @@ module Going
 
     def incomplete?
       !completed?
+    end
+
+    def inspect
+      "#<#{self.class} message: #{message.inspect}>"
     end
 
     private

@@ -17,7 +17,6 @@ module Going
       @pushes = []
       @shifts = []
 
-      @closed = false
       @mutex = Mutex.new
 
       if block_given?
@@ -62,7 +61,7 @@ module Going
 
         pair_with_shift push
 
-        select_statement.when_complete(push, pushes, &method(:remove_operation)) if select_statement?
+        select_statement.when_complete(push) { remove_push push } if select_statement?
 
         push.complete if under_capacity?
         push.signal if select_statement?
@@ -92,7 +91,7 @@ module Going
 
         pair_with_push shift
 
-        select_statement.when_complete(shift, shifts, &method(:remove_operation)) if select_statement?
+        select_statement.when_complete(shift) { remove_shift shift } if select_statement?
 
         shift.signal if select_statement?
         shift.close if closed?
@@ -160,35 +159,41 @@ module Going
 
     def pair_with_push(shift)
       pushes.each_with_index.any? do |push, index|
-        if push.select_statement != select_statement && shift.complete(push)
-          complete_next_push_now_that_channel_under_capacity
+        if shift.complete(push)
           shifts.pop
           pushes.delete_at index
-          true
+          complete_pushes_up_to_capacity
         end
       end
     end
 
     def pair_with_shift(push)
       shifts.each_with_index.any? do |shift, index|
-        if shift.select_statement != select_statement && shift.complete(push)
+        if shift.complete(push)
           pushes.pop
           shifts.delete_at index
-          true
         end
       end
     end
 
-    def remove_operation(operation, queue)
+    def remove_shift(shift)
       synchronize do
-        index = queue.index(operation)
-        queue.delete_at index if index
+        index = shifts.index(shift)
+        shifts.delete_at index if index
       end
     end
 
-    def complete_next_push_now_that_channel_under_capacity
-      push = pushes[capacity]
-      push.complete if push && push.incomplete?
+    def remove_push(push)
+      synchronize do
+        index = pushes.index(push)
+        pushes.delete_at index if index
+        complete_pushes_up_to_capacity
+      end
+    end
+
+    def complete_pushes_up_to_capacity
+      pushes_up_to_capacity = pushes[0, capacity] || []
+      pushes_up_to_capacity.select(&:incomplete?).each(&:complete)
     end
 
     def pushes_over_capacity!
