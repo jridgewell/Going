@@ -63,7 +63,7 @@ consumer. The capacity of the channel buffer limits the number of
 simultaneous calls to process.
 
 ```ruby
-sem = Going::Channel.new(MaxOutstanding)
+sem = Going::Channel.new(MAX_OUTSTANDING)
 
 def handle(request)
     sem.push 1    # Wait for active queue to drain.
@@ -80,12 +80,12 @@ def serve(request_queue)
 end
 ```
 
-Once `MaxOutstanding` handlers are executing `process`, any more will
+Once `MAX_OUTSTANDING` handlers are executing `process`, any more will
 block trying to send into the filled channel buffer, until one of the
 existing handlers finishes and receives from the buffer.
 
 This design has a problem, though: `serve` creates a new goroutine for
-every incoming request, even though only `MaxOutstanding` of them can
+every incoming request, even though only `MAX_OUTSTANDING` of them can
 run at any moment. As a result, the program can consume unlimited
 resources if the requests come in too fast. We can address that
 deficiency by changing `serve` to gate the creation of the goroutines.
@@ -120,7 +120,7 @@ end
 
 def serve(request_queue, quit) {
     # Start handlers
-    MaxOutstanding.times do
+    MAX_OUTSTANDING.times do
         Going.go do
             handle request_queue
         end
