@@ -4,7 +4,7 @@ module Going
       return if push.select_statement == select_statement
       select_statement.once do
         push.select_statement.once do
-          self.message = push.message
+          @message = push.message
 
           super()
           push.complete

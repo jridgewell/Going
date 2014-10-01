@@ -2,8 +2,7 @@ module Going
   class Operation
     extend BooleanAttrReader
 
-    attr_accessor :message
-    attr_reader :select_statement
+    attr_reader :message, :select_statement
 
     def initialize(opts = {}, &on_complete)
       @message = opts[:message]

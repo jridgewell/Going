@@ -69,10 +69,9 @@ module Going
       end
     end
 
-    def secondary_complete(*args, &on_complete)
+    def secondary_complete(&on_complete)
       complete_mutex.synchronize do
         if !secondary_completed?
-          @args = args
           @on_complete = on_complete
           @secondary_completed = true
           semaphore.signal
