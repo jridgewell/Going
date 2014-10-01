@@ -9,9 +9,7 @@ module Going
     # A case statement that will succeed immediately.
     #
     def default(&blk)
-      Channel.new(1).tap do |ch|
-        ch.push(nil, &blk)
-      end
+      SelectStatement.instance.default(&blk)
     end
 
     #

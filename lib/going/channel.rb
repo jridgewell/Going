@@ -61,7 +61,7 @@ module Going
 
         pair_with_shift push
 
-        select_statement.when_complete(push) { remove_push push } if select_statement?
+        select_statement.cleanup(push) { remove_push push } if select_statement?
 
         push.complete if under_capacity?
         push.signal if select_statement?
@@ -91,7 +91,7 @@ module Going
 
         pair_with_push shift
 
-        select_statement.when_complete(shift) { remove_shift shift } if select_statement?
+        select_statement.cleanup(shift) { remove_shift shift } if select_statement?
 
         shift.signal if select_statement?
         shift.close if closed?

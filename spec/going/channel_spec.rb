@@ -180,18 +180,20 @@ describe Going::Channel do
           i = nil
           Going.select do |s|
             channel.receive
-            s.default
+            buffered_channel.push 1
+
             th = Going.go do
               i = channel.receive
             end
+
             Going.go do
               sleeper channel, :shifts, 2
-              channel.push 1
+              channel.push 2
               th.join
             end.join
           end
 
-          expect(i).to be(1)
+          expect(i).to be(2)
         end
       end
     end
@@ -249,9 +251,9 @@ describe Going::Channel do
 
           Going.select do |s|
             channel.push 1
-            s.default
+            buffered_channel.push 2
             Going.go do
-              channel.push 2
+              channel.push 3
             end
             Going.go do
               sleeper channel, :pushes, 2
@@ -259,7 +261,7 @@ describe Going::Channel do
             end.join
           end
 
-          expect(i).to be(2)
+          expect(i).to be(3)
         end
       end
     end
