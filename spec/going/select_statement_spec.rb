@@ -363,14 +363,6 @@ describe Going::SelectStatement do
       expect(dont_call).not_to be_called
     end
 
-    it 'is not called if select statement succeeds' do
-      Going.select do |s|
-        s.default(&dont_call)
-        buffered_channel.push 1
-      end
-      expect(dont_call).not_to be_called
-    end
-
     it 'will be prioritized over a push on a closed channel' do
       channel.close
       Going.select do |s|
