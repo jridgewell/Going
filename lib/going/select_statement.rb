@@ -125,7 +125,7 @@ module Going
     end
 
     def wake?
-      completed? || secondary_completed?
+      completed? || secondary_completed? || defaulted?
     end
 
     def cleanup
