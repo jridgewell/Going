@@ -156,7 +156,7 @@ module Going
 
     def pair_with_push(shift)
       pushes.each_with_index.any? do |push, index|
-        if push.select_statement != select_statement && shift.complete(push)
+        if shift.complete(push)
           shifts.pop
           pushes.delete_at index
           complete_pushes_up_to_capacity
@@ -166,7 +166,7 @@ module Going
 
     def pair_with_shift(push)
       shifts.each_with_index.any? do |shift, index|
-        if shift.select_statement != select_statement && shift.complete(push)
+        if shift.complete(push)
           pushes.pop
           shifts.delete_at index
         end
