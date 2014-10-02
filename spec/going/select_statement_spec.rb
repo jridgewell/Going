@@ -252,25 +252,6 @@ describe Going::SelectStatement do
           end
         end
       end
-
-      context 'when select succeeds' do
-        it 'does not raise error' do
-          expect do
-            Going.select do |s|
-              channel.push 1
-              s.default
-            end
-          end.not_to raise_error
-        end
-
-        it 'does not call block' do
-          Going.select do |s|
-            channel.push(1, &dont_call)
-            s.default
-          end
-          expect(dont_call).not_to be_called
-        end
-      end
     end
 
     describe 'receive' do
@@ -411,24 +392,6 @@ describe Going::SelectStatement do
           s.default
         end
       end.to raise_error
-    end
-
-    it 'will be prioritized over a push on a closed channel' do
-      channel.close
-      Going.select do |s|
-        s.default(&spy)
-        channel.push 1
-      end
-      expect(spy).to be_called
-    end
-
-    it 'is prioritized over a push on a closed channel' do
-      channel.close
-      Going.select do |s|
-        channel.push 1
-        s.default(&spy)
-      end
-      expect(spy).to be_called
     end
 
     it 'calls its block on success' do
