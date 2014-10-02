@@ -63,7 +63,7 @@ module Going
 
         select_statement.cleanup(push) { remove_push push } if select_statement?
 
-        push.complete if under_capacity?
+        push.complete if under_capacity? && push.incomplete?
         push.signal if select_statement?
         pushes.pop.close if closed?
 
