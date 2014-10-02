@@ -6,8 +6,8 @@ module Going
         push.select_statement.once do
           @message = push.message
 
-          super()
           push.complete
+          super()
           notify_select_statement
           true
         end
