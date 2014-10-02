@@ -110,14 +110,23 @@ describe Going::Channel do
 
     it 'will reject all but the first #capacity pushes' do
       begin
-        channel = Going::Channel.new 2
         Going.go do
-          sleeper channel, :pushes, 3
-          channel.close
+          sleeper buffered_channel, :pushes, 2
+          buffered_channel.close
         end
-        3.times { |i| channel.push i }
+        2.times { |i| buffered_channel.push i }
       rescue
-        expect(channel.size).to eq(2)
+        buffered_channel.receive
+        expect(buffered_channel.size).to eq(0)
+      end
+    end
+
+    it 'will deny any new pushes' do
+      buffered_channel.close
+      begin
+        buffered_channel.push 1
+      rescue
+        expect(buffered_channel.size).to eq(0)
       end
     end
   end

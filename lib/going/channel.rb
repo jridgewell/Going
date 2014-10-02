@@ -65,7 +65,7 @@ module Going
 
         push.complete if under_capacity?
         push.signal if select_statement?
-        push.close if closed?
+        pushes.pop.close if closed?
 
         push.wait(mutex)
 
