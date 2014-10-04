@@ -94,7 +94,7 @@ module Going
         select_statement.cleanup(shift) { remove_shift shift } if select_statement?
 
         shift.signal if select_statement?
-        shift.close if closed?
+        shifts.pop.close if closed? && shift.incomplete?
 
         shift.wait(mutex)
 
