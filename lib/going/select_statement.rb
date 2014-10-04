@@ -72,9 +72,9 @@ module Going
     def default(&on_complete)
       complete_mutex.synchronize do
         fail 'multiple defaults in select' if defaulted?
+        @defaulted = true
         if !completed?
           @on_complete = on_complete
-          @defaulted = true
         end
       end
     end
