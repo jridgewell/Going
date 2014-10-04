@@ -3,6 +3,7 @@ require 'going'
 describe Going::Channel do
   subject(:channel) { Going::Channel.new }
   let(:buffered_channel) { Going::Channel.new 1 }
+  let(:dont_call) { Spy.new }
 
   def elapsed_time(original_time)
     (Time.now - original_time)
@@ -41,7 +42,7 @@ describe Going::Channel do
         expect(channel_is_nil).to be(false)
       end
 
-      it 'yields self if block given' do
+      it 'yields self' do
         yielded = nil
         channel = Going::Channel.new do |ch|
           yielded = ch
@@ -75,6 +76,12 @@ describe Going::Channel do
       channel = Going::Channel.new(5)
       expect(channel.capacity).to eq(5)
     end
+
+    it 'does not decrease after a push' do
+      channel = Going::Channel.new(5)
+      channel.push 1
+      expect(channel.capacity).to eq(5)
+    end
   end
 
   describe '#close' do
@@ -92,7 +99,7 @@ describe Going::Channel do
       expect(channel.close).to be(false)
     end
 
-    it 'will wake a blocked push' do
+    it 'wakes a blocked push' do
       Going.go do
         sleeper channel, :pushes, 1
         channel.close
@@ -100,7 +107,7 @@ describe Going::Channel do
       expect { channel.push 1 }.to raise_error
     end
 
-    it 'will wake a blocked shift' do
+    it 'wakes a blocked shift' do
       Going.go do
         sleeper channel, :shifts, 1
         channel.close
@@ -108,25 +115,55 @@ describe Going::Channel do
       expect { channel.receive }.to raise_error(StopIteration)
     end
 
-    it 'will reject all but the first #capacity pushes' do
-      begin
-        Going.go do
-          sleeper buffered_channel, :pushes, 2
-          buffered_channel.close
-        end
-        2.times { |i| buffered_channel.push i }
-      rescue
-        buffered_channel.receive
-        expect(buffered_channel.size).to eq(0)
+    it 'rejects all but the first #capacity waiting pushes' do
+      Going.go do
+        2.times { |i| buffered_channel.push i } rescue nil
       end
+
+      sleeper buffered_channel, :pushes, 2
+      buffered_channel.close
+
+      buffered_channel.receive
+
+      expect(buffered_channel.size).to eq(0)
     end
 
     it 'will deny any new pushes' do
       buffered_channel.close
+      buffered_channel.push 1 rescue nil
+
+      expect(buffered_channel.size).to eq(0)
+    end
+
+    it 'rejects any waiting shifts' do
+      Going.go do
+        buffered_channel.receive rescue nil
+      end
+
+      sleeper buffered_channel, :shifts, 1
+      buffered_channel.close
+
       begin
-        buffered_channel.push 1
+        Going.select do |s|
+          buffered_channel.push(1, &dont_call)
+          s.default
+        end
       rescue
-        expect(buffered_channel.size).to eq(0)
+        expect(dont_call).not_to be_called
+      end
+    end
+
+    it 'will deny any new shifts in an empty channel' do
+      buffered_channel.close
+      buffered_channel.shift rescue nil
+
+      begin
+        Going.select do |s|
+          buffered_channel.push(1, &dont_call)
+          s.default
+        end
+      rescue
+        expect(dont_call).not_to be_called
       end
     end
   end
@@ -188,8 +225,10 @@ describe Going::Channel do
         it 'attempts to complete with next shift' do
           i = nil
           Going.select do |s|
-            channel.receive
+            # complete the select
             buffered_channel.push 1
+
+            channel.receive
 
             th = Going.go do
               i = channel.receive
@@ -259,11 +298,15 @@ describe Going::Channel do
           i = nil
 
           Going.select do |s|
-            channel.push 1
-            buffered_channel.push 2
+            # complete the select
+            buffered_channel.push 1
+
+            channel.push 2
+
             Going.go do
               channel.push 3
             end
+
             Going.go do
               sleeper channel, :pushes, 2
               i = channel.receive
@@ -339,12 +382,16 @@ describe Going::Channel do
         channel.close
       end
 
-      i = 0
-      channel.each do |message|
-        expect(message).to eq(i)
-        i += 1
+      expect(channel.each.to_a).to eq(10.times.to_a)
+    end
+
+    it 'is destructive' do
+      Going.go do
+        channel.push 1
+        channel.close
       end
-      expect(i).to eq(10)
+      channel.each.to_a
+      expect(channel.each.to_a).to eq([])
     end
 
     it 'returns an enumerator if no block is given' do
