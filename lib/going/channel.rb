@@ -63,9 +63,9 @@ module Going
 
         select_statement.cleanup(push) { remove_push push } if select_statement?
 
-        push.complete if under_capacity? && push.incomplete?
         push.signal if select_statement?
         pushes.pop.close if closed?
+        push.complete if under_capacity? && !closed?
 
         push.wait(mutex)
 
@@ -192,8 +192,7 @@ module Going
     end
 
     def complete_pushes_up_to_capacity
-      pushes_up_to_capacity = pushes[0, capacity] || []
-      pushes_up_to_capacity.select(&:incomplete?).each(&:complete)
+      pushes[0, capacity].select(&:incomplete?).each(&:complete)
     end
 
     def pushes_over_capacity!
