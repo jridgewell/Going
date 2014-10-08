@@ -58,10 +58,9 @@ module Going
       synchronize do
         push = Push.new(message: obj, select_statement: select_statement, &on_complete)
         pushes << push
+        select_statement.cleanup(push) { remove_push push } if select_statement?
 
         pair_with_shift push
-
-        select_statement.cleanup(push) { remove_push push } if select_statement?
 
         push.signal if select_statement?
         pushes.pop.close if closed?
@@ -88,10 +87,9 @@ module Going
       synchronize do
         shift = Shift.new(select_statement: select_statement, &on_complete)
         shifts << shift
+        select_statement.cleanup(shift) { remove_shift shift } if select_statement?
 
         pair_with_push shift
-
-        select_statement.cleanup(shift) { remove_shift shift } if select_statement?
 
         shift.signal if select_statement?
         shifts.pop.close if closed? && shift.incomplete?
