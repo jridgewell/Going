@@ -20,8 +20,5 @@ module Going
 
     def complete(*args)
     end
-
-    def secondary_complete(*args)
-    end
   end
 end

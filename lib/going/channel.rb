@@ -58,14 +58,13 @@ module Going
       synchronize do
         push = Push.new(message: obj, select_statement: select_statement, &on_complete)
         pushes << push
+        select_statement.cleanup(push) { remove_push push } if select_statement?
 
         pair_with_shift push
 
-        select_statement.cleanup(push) { remove_push push } if select_statement?
-
-        push.complete if under_capacity?
         push.signal if select_statement?
-        push.close if closed?
+        pushes.pop.close if closed?
+        push.complete if under_capacity? && !closed?
 
         push.wait(mutex)
 
@@ -88,13 +87,12 @@ module Going
       synchronize do
         shift = Shift.new(select_statement: select_statement, &on_complete)
         shifts << shift
+        select_statement.cleanup(shift) { remove_shift shift } if select_statement?
 
         pair_with_push shift
 
-        select_statement.cleanup(shift) { remove_shift shift } if select_statement?
-
         shift.signal if select_statement?
-        shift.close if closed?
+        shifts.pop.close if closed? && shift.incomplete?
 
         shift.wait(mutex)
 
@@ -192,8 +190,7 @@ module Going
     end
 
     def complete_pushes_up_to_capacity
-      pushes_up_to_capacity = pushes[0, capacity] || []
-      pushes_up_to_capacity.select(&:incomplete?).each(&:complete)
+      pushes[0, capacity].select(&:incomplete?).each(&:complete)
     end
 
     def pushes_over_capacity!

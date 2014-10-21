@@ -30,9 +30,11 @@ module Going
 
     select = SelectStatement.new_instance
     select.select(&blk)
-  ensure
-    select.cleanup!
+
     SelectStatement.reset
     select.call_completion_block
+  ensure
+    SelectStatement.reset
+    select.cleanup!
   end
 end

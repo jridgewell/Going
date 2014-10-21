@@ -64,17 +64,6 @@ module Going
           @args = args
           @on_complete = on_complete
           @completed = true
-          @secondary_completed = true
-          signal
-        end
-      end
-    end
-
-    def secondary_complete(&on_complete)
-      complete_mutex.synchronize do
-        if !secondary_completed?
-          @on_complete = on_complete
-          @secondary_completed = true
           signal
         end
       end
@@ -83,10 +72,9 @@ module Going
     def default(&on_complete)
       complete_mutex.synchronize do
         fail 'multiple defaults in select' if defaulted?
+        @defaulted = true
         if !completed?
           @on_complete = on_complete
-          @defaulted = true
-          @secondary_completed = true
         end
       end
     end
@@ -105,7 +93,7 @@ module Going
 
     attr_reader :semaphore, :once_mutex, :complete_mutex, :cleanups
     attr_reader :on_complete, :args, :completed_operation
-    battr_reader :completed, :secondary_completed, :defaulted
+    battr_reader :completed, :defaulted
 
     def wait
       complete_mutex.synchronize do
@@ -120,7 +108,7 @@ module Going
     end
 
     def wake?
-      completed? || secondary_completed? || defaulted?
+      completed? || defaulted?
     end
 
     def signal

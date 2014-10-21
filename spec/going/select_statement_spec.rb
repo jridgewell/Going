@@ -42,25 +42,25 @@ describe Going::SelectStatement do
     end
 
     it 'calls block on operation that succeeds' do
-      third_channel = Going::Channel.new 1
       Going.select do |s|
-        channel.receive(&dont_call)
+        channel.receive
         buffered_channel.push(1, &spy)
-        third_channel.push(2, &dont_call)
       end
       expect(spy).to be_called
-      expect(dont_call).not_to be_called
     end
 
     it 'does not call other blocks' do
       Going.select do |s|
         channel.push(1, &dont_call)
         buffered_channel.push 2
+
         Going.go do
+          Going.go do
+            channel.push 3
+          end
           channel.receive
-        end
+        end.join
       end
-      sleeper channel, :shifts, 1
       expect(dont_call).not_to be_called
     end
 
@@ -77,15 +77,6 @@ describe Going::SelectStatement do
       end
       expect(elapsed_time(now)).to be > 0.2
       expect(spy.args.first).to eq(3)
-      expect(dont_call).not_to be_called
-    end
-
-    it 'does not complete other operations if already succeeded' do
-      Going.select do |s|
-        buffered_channel.receive(&dont_call)
-        s.default
-      end
-      buffered_channel.push 1
       expect(dont_call).not_to be_called
     end
 
@@ -114,7 +105,7 @@ describe Going::SelectStatement do
     context 'buffered channels' do
       it 'will preserve an incomplete push' do
         Going.select do |s|
-          buffered_channel.push(1, &spy)
+          buffered_channel.push(1)
         end
         expect(buffered_channel.size).to eq(1)
       end
@@ -151,6 +142,15 @@ describe Going::SelectStatement do
         end
 
         expect(channel.receive).to eq(4)
+      end
+
+      it 'will not succeed pushing when closed and under capacity' do
+        buffered_channel.close
+        expect do
+          Going.select do |s|
+            buffered_channel.push 1
+          end
+        end.to raise_error
       end
     end
 
@@ -250,25 +250,6 @@ describe Going::SelectStatement do
           rescue
             expect(dont_call).not_to be_called
           end
-        end
-      end
-
-      context 'when select succeeds' do
-        it 'does not raise error' do
-          expect do
-            Going.select do |s|
-              channel.push 1
-              s.default
-            end
-          end.not_to raise_error
-        end
-
-        it 'does not call block' do
-          Going.select do |s|
-            channel.push(1, &dont_call)
-            s.default
-          end
-          expect(dont_call).not_to be_called
         end
       end
     end
@@ -411,24 +392,6 @@ describe Going::SelectStatement do
           s.default
         end
       end.to raise_error
-    end
-
-    it 'will be prioritized over a push on a closed channel' do
-      channel.close
-      Going.select do |s|
-        s.default(&spy)
-        channel.push 1
-      end
-      expect(spy).to be_called
-    end
-
-    it 'is prioritized over a push on a closed channel' do
-      channel.close
-      Going.select do |s|
-        channel.push 1
-        s.default(&spy)
-      end
-      expect(spy).to be_called
     end
 
     it 'calls its block on success' do

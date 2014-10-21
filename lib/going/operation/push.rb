@@ -7,7 +7,7 @@ module Going
 
     def close
       super
-      select_statement.secondary_complete do
+      select_statement.complete(self) do
         fail 'cannot push to a closed channel'
       end
     end
