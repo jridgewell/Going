@@ -55,8 +55,12 @@ module Going
     # until a thread shifts from it.
     #
     def push(obj, &on_complete)
-        push = Push.new(message: obj, select_statement: select_statement, &on_complete)
       mutex.synchronize do
+        push = Push.new(
+          message: obj,
+          select_statement: select_statement,
+          on_complete: on_complete
+        )
         pushes << push
         select_statement.cleanup(push) { remove_push push } if select_statement?
 
@@ -84,8 +88,11 @@ module Going
     # waits until a thread pushes to it.
     #
     def shift(&on_complete)
-        shift = Shift.new(select_statement: select_statement, &on_complete)
       mutex.synchronize do
+        shift = Shift.new(
+          select_statement: select_statement,
+          on_complete: on_complete
+        )
         shifts << shift
         select_statement.cleanup(shift) { remove_shift shift } if select_statement?
 

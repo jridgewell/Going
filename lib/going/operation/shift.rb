@@ -22,7 +22,7 @@ module Going
     private
 
     def notify_select_statement
-      select_statement.complete(self, message, ok: ok?, &on_complete)
+      select_statement.complete(self, on_complete, message, ok: ok?)
     end
 
     def ok?

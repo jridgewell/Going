@@ -4,10 +4,10 @@ module Going
 
     attr_reader :message, :select_statement
 
-    def initialize(opts = {}, &on_complete)
-      @message = opts[:message]
-      @select_statement = opts[:select_statement]
+    def initialize(message: nil, on_complete: nil, select_statement: nil)
+      @message = message
       @on_complete = on_complete
+      @select_statement = select_statement
 
       @semaphore = ConditionVariable.new
     end

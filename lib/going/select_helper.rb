@@ -9,7 +9,7 @@ module Going
     # A case statement that will succeed immediately.
     #
     def default(&blk)
-      SelectStatement.instance.default(&blk)
+      SelectStatement.instance.default(blk)
     end
 
     #
