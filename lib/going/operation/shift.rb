@@ -1,7 +1,7 @@
 module Going
   class Shift < Operation
     def complete(push)
-      return if push.select_statement == select_statement
+      return if push.select_statement === select_statement
       select_statement.once do
         push.select_statement.once do
           @message = push.message
