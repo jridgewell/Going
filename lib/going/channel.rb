@@ -202,7 +202,7 @@ module Going
     end
 
     def select_statement
-      SelectStatement.instance || NilSelectStatement.instance
+      SelectStatement.instance
     end
 
     def select_statement?

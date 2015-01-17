@@ -5,7 +5,7 @@ module Going
 
     class << self
       def instance
-        Thread.current[global_key]
+        Thread.current[global_key] || reset
       end
 
       def instance?
@@ -17,7 +17,7 @@ module Going
       end
 
       def reset
-        self.instance = nil
+        self.instance = NilSelectStatement.instance
       end
 
       private
