@@ -29,12 +29,13 @@ module Going
     fail 'a block must be passed' unless block_given?
 
     select = SelectStatement.new_instance
-    select.select(&blk)
+    begin
+      select.select(blk)
+    ensure
+      select.cleanup!
+      SelectStatement.reset
+    end
 
-    SelectStatement.reset
     select.call_completion_block
-  ensure
-    SelectStatement.reset
-    select.cleanup!
   end
 end
