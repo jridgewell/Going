@@ -68,7 +68,13 @@ module Going
 
         push.signal if select_statement?
         pushes.pop.close if closed?
-        push.complete if under_capacity? && !closed?
+        if select_statement?
+          select_statement.once do
+            push.complete if under_capacity? && !closed?
+          end
+        else
+          push.complete if under_capacity? && !closed?
+        end
 
         push.wait(mutex)
 

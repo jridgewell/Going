@@ -36,6 +36,7 @@ module Going
       @complete_mutex = Mutex.new
       @semaphore = ConditionVariable.new
       @cleanups = {}
+      @already_completed = []
     end
 
     def select(blk)
@@ -46,6 +47,7 @@ module Going
         select_helper.instance_eval(&blk)
       end
 
+      already_completed.sample(1).each(&:call)
       wait
     end
 
@@ -79,9 +81,13 @@ module Going
       end
     end
 
-    def once(*args, &blk)
-      once_mutex.synchronize do
-        yield(*args) if block_given? && incomplete?
+    def once(&blk)
+      if waited?
+        once_mutex.synchronize do
+          yield(*args) if block_given? && incomplete?
+        end
+      else
+        already_completed << blk
       end
     end
 
@@ -92,10 +98,11 @@ module Going
     private
 
     attr_reader :semaphore, :once_mutex, :complete_mutex, :cleanups
-    attr_reader :on_complete, :args, :completed_operation
-    battr_reader :completed, :defaulted
+    attr_reader :on_complete, :args, :already_completed
+    battr_reader :completed, :defaulted, :waited
 
     def wait
+      @waited = true
       complete_mutex.synchronize do
         semaphore.wait(complete_mutex) until wake?
       end
