@@ -41,7 +41,7 @@ module Going
     # Closes the channel. Any data in the buffer may still be retrieved.
     #
     def close
-      synchronize do
+      mutex.synchronize do
         return false if closed?
 
         shifts.each(&:close).clear
@@ -55,8 +55,8 @@ module Going
     # until a thread shifts from it.
     #
     def push(obj, &on_complete)
-      synchronize do
         push = Push.new(message: obj, select_statement: select_statement, &on_complete)
+      mutex.synchronize do
         pushes << push
         select_statement.cleanup(push) { remove_push push } if select_statement?
 
@@ -84,8 +84,8 @@ module Going
     # waits until a thread pushes to it.
     #
     def shift(&on_complete)
-      synchronize do
         shift = Shift.new(select_statement: select_statement, &on_complete)
+      mutex.synchronize do
         shifts << shift
         select_statement.cleanup(shift) { remove_shift shift } if select_statement?
 
@@ -151,10 +151,6 @@ module Going
 
     attr_reader :mutex, :pushes, :shifts
 
-    def synchronize(&blk)
-      mutex.synchronize(&blk)
-    end
-
     def pair_with_push(shift)
       pushes.each_with_index.any? do |push, index|
         if shift.complete(push)
@@ -175,14 +171,14 @@ module Going
     end
 
     def remove_shift(shift)
-      synchronize do
+      mutex.synchronize do
         index = shifts.index(shift)
         shifts.delete_at index if index
       end
     end
 
     def remove_push(push)
-      synchronize do
+      mutex.synchronize do
         index = pushes.index(push)
         pushes.delete_at index if index
         complete_pushes_up_to_capacity
