@@ -193,7 +193,7 @@ module Going
     end
 
     def complete_pushes_up_to_capacity
-      pushes[0, capacity].select(&:incomplete?).each(&:complete)
+      pushes[0, capacity].each(&:complete)
     end
 
     def pushes_over_capacity!
