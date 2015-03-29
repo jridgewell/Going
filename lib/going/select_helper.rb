@@ -17,8 +17,8 @@ module Going
     #
     def timeout(seconds, &blk)
       ch = Channel.new do |c|
-          sleep seconds
-          c.receive
+        sleep seconds
+        c.receive
       end
       ch.push(nil, &blk)
     end
