@@ -9,20 +9,18 @@ module Going
     # A case statement that will succeed immediately.
     #
     def default(&blk)
-      SelectStatement.instance.default(&blk)
+      SelectStatement.instance.default(blk)
     end
 
     #
     # A case statement that will succeed after +seconds+ seconds.
     #
     def timeout(seconds, &blk)
-      Channel.new.tap do |ch|
-        Going.go do
+      ch = Channel.new do |c|
           sleep seconds
-          ch.receive
-        end
-        ch.push(nil, &blk)
+          c.receive
       end
+      ch.push(nil, &blk)
     end
   end
 end

@@ -5,7 +5,7 @@ module Going
 
     class << self
       def instance
-        Thread.current[global_key]
+        Thread.current[global_key] || reset
       end
 
       def instance?
@@ -17,7 +17,7 @@ module Going
       end
 
       def reset
-        self.instance = nil
+        self.instance = NilSelectStatement.instance
       end
 
       private
@@ -38,10 +38,10 @@ module Going
       @cleanups = {}
     end
 
-    def select(&blk)
+    def select(blk)
       select_helper = SelectHelper.instance
       if blk.arity == 1
-        yield select_helper
+        blk.call select_helper
       else
         select_helper.instance_eval(&blk)
       end
@@ -57,7 +57,7 @@ module Going
       cleanups.values.each(&:call)
     end
 
-    def complete(operation, *args, &on_complete)
+    def complete(operation, on_complete, *args)
       complete_mutex.synchronize do
         if !completed?
           cleanups.delete operation
@@ -69,7 +69,7 @@ module Going
       end
     end
 
-    def default(&on_complete)
+    def default(on_complete)
       complete_mutex.synchronize do
         fail 'multiple defaults in select' if defaulted?
         @defaulted = true
