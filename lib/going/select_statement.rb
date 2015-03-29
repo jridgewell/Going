@@ -47,7 +47,7 @@ module Going
         select_helper.instance_eval(&blk)
       end
 
-      already_completed.sample(1).each(&:call)
+      already_completed.sample.call unless already_completed.empty?
       wait
     end
 
