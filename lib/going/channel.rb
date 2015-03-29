@@ -193,11 +193,11 @@ module Going
     end
 
     def complete_pushes_up_to_capacity
-      pushes[0, capacity].each(&:complete)
+      pushes.first(capacity).each(&:complete)
     end
 
     def pushes_over_capacity!
-      pushes.slice!(capacity, pushes.size) || []
+      pushes.slice!(capacity..-1) || []
     end
 
     def under_capacity?
